@@ -1,0 +1,13 @@
+set serveroutput on;
+declare
+	cursor cur_1 is select trigger_name from all_triggers where upper(owner)=upper('{{rbm_custom_user_name}}');
+begin
+	for rec in cur_1
+	loop
+		dbms_output.put_line('Enabling ' || rec.trigger_name || ' trigger');
+		execute immediate 'alter trigger {{rbm_custom_user_name}}.' || rec.trigger_name || ' enable';
+	end loop;
+end;
+/
+commit;
+exit;

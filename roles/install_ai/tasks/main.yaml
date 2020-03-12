@@ -1,0 +1,62 @@
+---
+- name: "Check {{ install_ai_patch_path | basename }} in {{ kits_dir }}"
+  stat:
+    path: "{{ install_ai_patch_path }}"
+  register: package
+
+- name: Check if it is Utilities package
+  set_fact:
+    utilities_patch: "{{ install_ai_patch_path | regex_search('(' ~ rbm_patterns.utilities ~ ')') != None }}"
+
+- block:
+    - name: Copy check_rbm_patch_is_installed.sql
+      template:
+        src: check_rbm_patch_is_installed.sql.j2
+        dest: "{{ infinys_dir }}/scripts/check_rbm_patch_is_installed.sql"
+        owner: "{{ RBM_BE_USER }}"
+        group: "{{ RBM_BE_GROUP }}"
+        mode: 0664
+
+    - name: "Check if {{ install_ai_patch_path | basename }} is already installed"
+      shell: |
+        source ./infinys.env
+        sqlplus -s {{ inf_user_name }}/$rbm_inf_user_password@{{ be_oracle_service_name }} @scripts/check_rbm_patch_is_installed.sql
+      args:
+        chdir: "{{ infinys_dir }}"
+      register: patch_installed
+      environment:
+        rbm_inf_user_password: "{{ inf_user_password }}"
+
+    - name: Remove temp script
+      file:
+        path: "{{ infinys_dir }}/scripts/check_rbm_patch_is_installed.sql"
+        state: absent
+
+    - debug:
+        msg: >
+          "[WARNING] Patch {{ install_ai_patch_path | basename }} is already installed.
+          {{ 'Force installation is activated.' if install_ai_force else 'Installation will be skipped.'  }}"
+      when:
+        - patch_installed.stdout | bool
+        - not ansible_check_mode
+  when: not utilities_patch
+
+- debug:
+    msg: "[WARNING] Can't find {{ install_ai_patch_path }}"
+  when:
+    - not package.stat.exists
+    - not ansible_check_mode
+
+- name: Install "{{ install_ai_patch_path | basename }}"
+  install_ai_patch:
+    netcracker_home: "{{ install_ai_netcracker_home }}"
+    patch: "{{ install_ai_patch_path }}"
+    args: "{{ install_ai_args }}"
+    config_files: "{{ install_ai_config_files }}"
+    properties: "{{ install_ai_predefined_properties | combine(install_ai_additional_properties) }}"
+    recreate_configs: "{{ install_ai_recreate_configs }}"
+  async: "{{ install_ai_async }}"
+  poll: "{{ install_ai_poll }}"
+  when:
+    - package.stat.exists
+    - utilities_patch or ((patch_installed is defined and not patch_installed.stdout | bool) or install_ai_force)

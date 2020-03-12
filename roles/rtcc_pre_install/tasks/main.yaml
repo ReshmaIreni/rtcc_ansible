@@ -1,0 +1,4 @@
+---
+- debug:
+    msg: Preinstall RTCC
+  when: not ansible_check_mode

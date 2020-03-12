@@ -1,0 +1,73 @@
+---
+dict_content:
+  - name: ECA
+    subdicts:
+      - value: ['username']
+      - value: ['password']
+  - name: oracle_tablespaces
+    subdicts:
+      - value: ['users']
+
+content:
+  ## ENVIRONMENT
+  - activemq_cms_home
+  - activemq_home
+  - apr_home
+  - java_dir
+  - RBM_BE_GROUP
+  - RBM_BE_USER
+  ## RBM
+  - dcfg_agent_port
+  - dcfg_bck_port
+  - infinys_dir
+  - kits_dir
+  - rbm_license_certificate_file
+  - rbm_license_dir
+  - rbm_license_file_name
+  - rbm_name
+  - rbm_root_dir
+  - testrate_dport
+  - tm_child_pp
+  - tm_sm_port
+  ## ECA
+  - domain_root
+  - web_server_home
+  - web_server_host
+  - web_server_port
+  - web_server_type
+  ## ORACLE
+  - be_oracle_service_name
+  - cvg_infinys_pf
+  - inf_user_name
+  - inf_user_password
+  - oracle_db_sid
+  - oracle_group
+  - oracle_home
+  - oracle_port
+  - oracle_user
+  - pf_app_user_name
+  - pf_app_user_password
+  - pf_audit_name
+  - pf_audit_password
+  - pf_container_user_name
+  - pf_container_user_password
+  - pf_initial_user_password
+  - pf_ora_logon_password
+  - pf_schema_name
+  - pf_schema_password
+  - pf_sec_schema_name
+  - pf_sec_schema_password
+  - pf_user_password
+  - rb_logon_password
+  - rb_security_password
+  - rbm_be_db_host
+  - rbm_custom_user_name
+  - rbm_custom_user_password
+  - sys_name
+  - sys_password
+  - timezone
+  - TWO_TASK
+  - unif_user_name
+  - unif_password
+  ## AUTOINSTALLER
+  - CUSTOMER_NAME

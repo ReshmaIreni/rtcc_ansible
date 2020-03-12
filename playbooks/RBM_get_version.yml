@@ -1,0 +1,9 @@
+---
+- name: getting installed components version
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: True
+  roles:
+    - rbm_get_params_from_db

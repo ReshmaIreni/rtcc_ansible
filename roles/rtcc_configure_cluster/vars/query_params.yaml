@@ -1,0 +1,5 @@
+---
+getter_format_output: 'to_json'
+get_params:
+  - { component: "rtcchost", sql_select: "select trim(chr(34)||host_name||chr(34)||': '||chr(34)||site_id||chr(34)) as param_from_db from rtcchost" }
+application_name: rtcc

@@ -1,0 +1,39 @@
+---
+- name: Check that the instanceArgsFile.args file exists
+  run_once: true
+  stat:
+    path: "{{ infinys_dir }}/instanceArgsFile.args"
+  register: instanceArgsFile
+
+- name: Clean up cachedtable for Upgrade
+  shell: |
+    {% for host in rtcc_cleanup_cache_host_list %}
+    {% for sn in hostvars[host]['oracle_service_name'] %}
+    source ./infinys.env
+    sqlplus -s geneva_admin/$rbm_rb_logon_password@{{ sn }} <<EOL
+    DELETE FROM cachedtable A WHERE a.rowid > ANY (SELECT B.rowid FROM cachedtable B WHERE A.TABLE_NAME_ORA = B.TABLE_NAME_ORA and A.FIRST_SCHEMA_VERSION = B.FIRST_SCHEMA_VERSION);
+    commit;
+    exit;
+    EOL
+    echo "Step completed."
+    {% endfor %}
+    {% endfor %}
+  args:
+    chdir: "{{ infinys_dir }}"
+  environment:
+    rbm_rb_logon_password: "{{ rb_logon_password }}"
+  when: instanceArgsFile.stat.exists
+  register: clean_up
+
+- debug:
+    msg: "{{ clean_up.stdout }}"
+  when: not ansible_check_mode and instanceArgsFile.stat.exists
+
+- name: Disconnect active sessions
+  include_role:
+    name: service_rbm
+    tasks_from: cleanup_disconnect_active_sessions.yaml
+  vars:
+    cleanup_disconnect_active_sessions_host_list: "{{ rtcc_cleanup_cache_host_list }}"
+    cleanup_disconnect_active_sessions_file_dest_dir: "{{ HA_ROOT }}/scripts"
+  when: instanceArgsFile.stat.exists

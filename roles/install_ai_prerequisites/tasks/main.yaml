@@ -1,0 +1,83 @@
+---
+- name: Upload AutoInstaller package
+  include_role:
+    name: upload_patch
+    tasks_from: single_patches
+  vars:
+    components_list: "{{ rbm_components.tools }}"
+    component_name: "AutoInstaller"
+    pattern: "{{ rbm_patterns.autoinstaller }}"
+
+- name: Find AutoInstaller zip
+  find:
+    paths: "{{ kits_dir }}"
+    pattern: "{{ rbm_patterns.autoinstaller }}"
+    use_regex: true
+    recurse: yes
+  register: AutoInstaller_zip
+
+- name: Check that the version.txt file exists
+  stat:
+    path: "{{ infinys_dir }}/AutoInstaller/version.txt"
+  register: install_ai_tool_version_txt
+
+- name: Get current AutoInstaller version
+  shell: "cat {{ infinys_dir }}/AutoInstaller/version.txt"
+  register: install_ai_tool_current_version
+  when: install_ai_tool_version_txt.stat.exists
+  changed_when: False
+  tags:
+    - skip_ansible_lint
+
+- name: Get new AutoInstaller version
+  shell: "unzip -p {{ AutoInstaller_zip.files.0.path }} AutoInstaller/version.txt"
+  args:
+    warn: False
+  ignore_errors: True
+  register: install_ai_tool_new_version
+  when: AutoInstaller_zip.files | length > 0
+  changed_when: False
+  tags:
+    - skip_ansible_lint
+
+- name: Exit if couldn't get AutoInstaller version
+  fail:
+    msg: "Could not read AutoInstaller/version.txt file in {{ AutoInstaller_zip.files.0.path }}"
+  when:
+    - install_ai_tool_new_version.rc is defined
+    - install_ai_tool_new_version.rc != 0
+
+- name: Install/Update AutoInstaller
+  block:
+    - name: "Unarchiving AutoInstaller into {{ infinys_dir }}"
+      unarchive:
+        src: "{{ AutoInstaller_zip.files.0.path }}"
+        dest: "{{ infinys_dir }}"
+        remote_src: yes
+        extra_opts: "-q"
+        owner: "{{ RBM_BE_USER }}"
+        group: "{{ RBM_BE_GROUP }}"
+
+    - name: Copying etalon_config.properties to config.properties
+      copy:
+        src: "{{ infinys_dir }}/AutoInstaller/etalon_config.properties"
+        dest: "{{ infinys_dir }}/AutoInstaller/config.properties"
+        owner: "{{ RBM_BE_USER }}"
+        group: "{{ RBM_BE_GROUP }}"
+        mode: 0644
+        backup: yes
+        remote_src: true
+
+    - name: Update config.properties in Autoinstaller
+      lineinfile:
+        dest: "{{ infinys_dir }}/AutoInstaller/config.properties"
+        regexp: "^platform.type"
+        line: "platform.type = rbm"
+        state: present
+
+  when: >
+    AutoInstaller_zip.files | length > 0 and
+    install_ai_tool_version_txt is defined and
+    install_ai_tool_new_version.stdout is defined and
+    (not install_ai_tool_version_txt.stat.exists or
+    install_ai_tool_current_version.stdout != install_ai_tool_new_version.stdout)

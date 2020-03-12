@@ -1,0 +1,5 @@
+---
+# List of variables defined required paths on be nodes
+preinstall_validate_paths:
+  - { path: "{{ oracle_home }}", stop_if_not_exist: yes, note_for_error_message: "<oracle_home>" }
+  - { path: "{{ perl_home }}", stop_if_not_exist: yes, note_for_error_message: "<perl_home>" }

@@ -1,0 +1,26 @@
+---
+
+- name: Ensuring {{ cleanup_execute_sql_script_dest_file | dirname }} direcrtory exists
+  file:
+    path: "{{ cleanup_execute_sql_script_dest_file | dirname }}"
+    state: directory
+  when: cleanup_execute_sql_script_host_list is defined
+
+- name: Copying {{ cleanup_execute_sql_script_template_file }} into {{ cleanup_execute_sql_script_dest_file }}
+  template:
+    src: "{{ cleanup_execute_sql_script_template_file }}"
+    dest: "{{ cleanup_execute_sql_script_dest_file }}"
+    mode: 0664
+  when: cleanup_execute_sql_script_host_list is defined
+
+- name: Execute srcipt {{ cleanup_execute_sql_script_dest_file }} for list {{ cleanup_execute_sql_script_host_list }}
+  shell: |
+    export ORACLE_HOME="{{ oracle_home }}"
+    export PATH="$PATH:$ORACLE_HOME/bin"
+    export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$ORACLE_HOME/lib"
+    cd {{ cleanup_execute_sql_script_dest_file | dirname }}
+    sqlplus -s {{ sys_name }}/$rbm_sys_password@{{ item }} {{ 'as sysdba' if use_sysdba|default(true) else '' }} @{{ cleanup_execute_sql_script_dest_file | basename }}
+  with_items: "{{ cleanup_execute_sql_script_host_list | map('extract', hostvars, ['oracle_service_name']) | list }}"
+  environment:
+    rbm_sys_password: "{{ sys_password }}"
+  when: cleanup_execute_sql_script_host_list is defined

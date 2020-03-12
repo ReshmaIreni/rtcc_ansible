@@ -1,0 +1,6 @@
+#!/bin/ksh
+{% for db_node in groups['RBM_FE_DB'] %}
+{% for sid in hostvars[db_node]['oracle_service_name'] %}
+CP -a "-INSTANCE {{ sid }} -ALL"
+{% endfor %}
+{% endfor %}

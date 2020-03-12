@@ -1,0 +1,344 @@
+---
+- name: "Info message"
+  hosts: RBM_BE_CONFIG_NODE
+  remote_user: "{{ cloud_user }}"
+  gather_facts: False
+  tasks:
+    - debug:
+        msg: "[WARNING] update_rtcc.yml playbook deprecated. Please use update_rbm_rtcc.yaml playbook. It will be removed in next versions"
+
+- name: Setup variables
+  hosts: RBM_FE_HA:RBM_FE_DB:RBM_BE_APP:DDRS:KAFKA_SMART:ZK:CASSANDRA:SMART:QCM_API
+  gather_facts: False
+  tags: always
+  tasks:
+    - name: Set rtcc_nodename for all hosts
+      set_fact:
+        rtcc_nodename: "{{ ocs_network[chosen_network.network_rtcc | d(chosen_network.network_default)].hostname |
+                          d(ocs_network[chosen_network.network_rtcc | d(chosen_network.network_default)].nodename) }}"
+    - name: Set oam_nodename for all hosts
+      set_fact:
+        oam_nodename: "{{ ocs_network[chosen_network.network_default].hostname |
+                         d(ocs_network[chosen_network.network_default].nodename) }}"
+
+    - name: Include extra_vars files
+      include_vars:
+        dir: "{{ rtcc_extra_vars_dir }}"
+      no_log: true
+      when: rtcc_extra_vars_dir is defined
+
+- name: Update infinys.env file for Oracle Wallet
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: false
+  tags: always
+  tasks:
+    - name: Set DATABASE and _JAVA_OPTIONS variables in infinys.env file to default format
+      block:
+        - name: Check that the infinys.env file exists
+          stat:
+            path: "{{ infinys_dir }}/infinys.env"
+          register: infinys_env
+
+        - block:
+            - name: Update DATABASE in infinys.env file
+              lineinfile:
+                dest: "{{ infinys_dir }}/infinys.env"
+                regexp: "^export DATABASE="
+                line: "export DATABASE=geneva_admin/{{ rb_logon_password }}@{{ be_oracle_service_name }}"
+                state: present
+                backrefs: yes
+
+            - name: Update _JAVA_OPTIONS in infinys.env file
+              lineinfile:
+                dest: "{{ infinys_dir }}/infinys.env"
+                regexp: "^export _JAVA_OPTIONS="
+                line: "export _JAVA_OPTIONS=\"-Djava.security.egd=file:///dev/urandom -Duser.timezone={{ timezone }}\""
+                state: present
+                backrefs: yes
+          when: infinys_env.stat.exists
+      when: rbm_oracle_wallet_enabled | default(false)
+
+- name: Preinstall validate. Check defined directories on nodes of RBM_FE_HA group
+  hosts: RBM_FE_HA
+  become: true
+  remote_user: "{{ rtcc_remote_user | default(RBM_FE_USER) }}"
+  become_user: "{{ rtcc_become_user | default(RBM_FE_USER) }}"
+  gather_facts: False
+  tags: always
+  roles:
+    - preinstall_validate
+  vars:
+    list: 'rtcc_vars.yml'
+    var_file_with_dirs_for_nodes: 'Require_Dirs_FE.yml'
+    preinstall_validate_ts_host_list: "{{ groups['RBM_FE_DB'] }}"
+    preinstall_validate_ts_sql_script_dest_path: "{{ HA_ROOT }}/scripts"
+    preinstall_validate_etalon_tablespaces: "{{ oracle_fe_tablespaces_size | d({}) }}"
+
+- name: Pre Installation Steps (RBM_FE_HA)
+  hosts: RBM_FE_HA
+  become: true
+  remote_user: "{{ rtcc_remote_user | default(RBM_FE_USER) }}"
+  become_user: "{{ rtcc_become_user | default(RBM_FE_USER) }}"
+  gather_facts: False
+  tags:
+    - rtcc_fe_pre_install
+  tasks:
+    - name: Include custom roles
+      include_role:
+        name: "{{ item }}"
+      with_items: "{{ rtcc_fe_pre_custom_roles | d([]) }}"
+
+- name: Pre Installation Steps (CLUSTER_CONFIG_NODE)
+  hosts: CLUSTER_CONFIG_NODE
+  become: true
+  remote_user: "{{ rtcc_remote_user | default(RBM_FE_USER) }}"
+  become_user: "{{ rtcc_become_user | default(RBM_FE_USER) }}"
+  gather_facts: False
+  tags:
+    - rtcc_fe_config_node_pre_install
+  tasks:
+    - name: Include custom roles
+      include_role:
+        name: "{{ item }}"
+      with_items: "{{ rtcc_fe_config_node_pre_custom_roles | d([]) }}"
+
+- name: Pre Installation Steps (RBM_BE_CONFIG_NODE)
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - rtcc_be_pre_install
+  tasks:
+    - name: Include custom roles
+      include_role:
+        name: "{{ item }}"
+      with_items: "{{ rtcc_be_pre_custom_roles | d([]) }}"
+
+- name: Pre-Configuring RTCC
+  hosts: RBM_FE_HA
+  become: true
+  remote_user: "{{ rtcc_remote_user | default(RBM_FE_USER) }}"
+  become_user: "{{ rtcc_become_user | default(RBM_FE_USER) }}"
+  gather_facts: False
+  tags:
+    - reload
+    - reload_fe
+    - recreate
+    - recreate_fe
+  roles:
+    - rtcc_prepare_cluster
+
+- name: Cleanup cache RTCC
+  hosts: CLUSTER_CONFIG_NODE
+  become: true
+  remote_user: "{{ rtcc_remote_user | default(RBM_FE_USER) }}"
+  become_user: "{{ rtcc_become_user | default(RBM_FE_USER) }}"
+  gather_facts: False
+  tags:
+    - reload
+    - reload_fe
+    - recreate
+    - recreate_fe
+  vars:
+    rtcc_cleanup_cache_host_list: "{{ groups['RBM_FE_DB'] }}"
+  roles:
+    - rtcc_cleanup_cache
+
+- name: Purge Caches
+  hosts:
+    - RBM_BATCH_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - reload
+    - reload_be
+    - purge
+  roles:
+    - rtcc_purge_cache
+
+- name: Recreate caches
+  hosts: RBM_BATCH_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - recreate
+    - recreate_be
+  roles:
+    - rtcc_install_cache
+
+- name: Load cache
+  hosts: RBM_BATCH_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - reload
+    - reload_be
+    - recreate
+    - recreate_be
+  roles:
+    - rtcc_load_cache
+
+- name: Install patches on caches
+  hosts: RBM_BATCH_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - install_patches_on_caches
+  roles:
+    - rtcc_update_caches
+
+- name: Configuring Cluster
+  hosts: CLUSTER_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - reconfigure_cluster
+  roles:
+    - rtcc_configure_cluster
+
+- name: Update system registry
+  hosts: RBM_BATCH_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - update_registry
+  roles:
+    - rtcc_update_registry
+
+- name: Provision BE
+  hosts: RBM_BATCH_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - provision
+    - provision_be
+  roles:
+    - rtcc_provision_be
+
+- name: Provision FE
+  hosts: CLUSTER_CONFIG_NODE
+  become: true
+  remote_user: "{{ rtcc_remote_user | default(RBM_FE_USER) }}"
+  become_user: "{{ rtcc_become_user | default(RBM_FE_USER) }}"
+  gather_facts: False
+  tags:
+    - provision
+    - provision_fe
+  roles:
+    - rtcc_provision_fe
+
+- name: Run post installation script
+  hosts: CLUSTER_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags: always
+  environment: "{{ rtcc_env_var_post_install_script | d({}) }}"
+  tasks:
+    - name: Check post install script stat
+      stat:
+        path: "{{ rtcc_post_install_script }}"
+      register: post_install_script
+      when:
+        - rtcc_post_install_script is defined
+      tags:
+        - rtcc_post_install_script
+
+    - name: Execute post install script (if exists)
+      shell: |
+        source {{ infinys_dir }}/infinys.env
+        chmod +x {{ rtcc_post_install_script }}
+        {{ rtcc_post_install_script }}
+      when:
+        - rtcc_post_install_script is defined
+        - post_install_script.stat.exists
+      tags:
+        - rtcc_post_install_script
+
+    - name: Set DATABASE and _JAVA_OPTIONS variables in infinys.env file to Oracle Wallet format
+      block:
+        - name: Check that the infinys.env file exists
+          stat:
+            path: "{{ infinys_dir }}/infinys.env"
+          register: infinys_env
+
+        - block:
+            - name: Update DATABASE in infinys.env file
+              lineinfile:
+                dest: "{{ infinys_dir }}/infinys.env"
+                regexp: "^export DATABASE="
+                line: "export DATABASE=/@{{ be_oracle_service_name }}"
+                state: present
+                backrefs: yes
+
+            - name: Update _JAVA_OPTIONS in infinys.env file
+              lineinfile:
+                dest: "{{ infinys_dir }}/infinys.env"
+                regexp: "^export _JAVA_OPTIONS="
+                line: "export _JAVA_OPTIONS=\"-Djava.security.egd=file:///dev/urandom -Duser.timezone={{ timezone }}{{ ' -Doracle.net.tns_admin='~tns_admin if tns_admin is defined else '' }}{{ ' -Doracle.net.wallet_location='~rbm_oracle_wallet_location if rbm_oracle_wallet_enabled | default(false) else '' }}\""
+                state: present
+                backrefs: yes
+          when: infinys_env.stat.exists
+      when: rbm_oracle_wallet_enabled | default(false)
+
+- name: Post Installation Steps (RBM_BE_CONFIG_NODE)
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - rtcc_be_post_install
+  tasks:
+    - name: Include custom roles
+      include_role:
+        name: "{{ item }}"
+      with_items: "{{ rtcc_be_post_custom_roles | d([]) }}"
+
+- name: Post Installation Steps (CLUSTER_CONFIG_NODE)
+  hosts: CLUSTER_CONFIG_NODE
+  become: true
+  remote_user: "{{ rtcc_remote_user | default(RBM_FE_USER) }}"
+  become_user: "{{ rtcc_become_user | default(RBM_FE_USER) }}"
+  gather_facts: False
+  tags:
+    - rtcc_fe_config_node_post_install
+  tasks:
+    - name: Include custom roles
+      include_role:
+        name: "{{ item }}"
+      with_items: "{{ rtcc_fe_config_node_post_custom_roles | d([]) }}"
+
+- name: Post Installation Steps (RBM_FE_HA)
+  hosts: RBM_FE_HA
+  become: true
+  remote_user: "{{ rtcc_remote_user | default(RBM_FE_USER) }}"
+  become_user: "{{ rtcc_become_user | default(RBM_FE_USER) }}"
+  gather_facts: False
+  tags:
+    - rtcc_fe_post_install
+  tasks:
+    - name: Include custom roles
+      include_role:
+        name: "{{ item }}"
+      with_items: "{{ rtcc_fe_post_custom_roles | d([]) }}"

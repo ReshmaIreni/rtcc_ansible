@@ -1,0 +1,121 @@
+---
+- name: Check custom rtcc_updateRegistry.sh.j2 in templates
+  delegate_to: localhost
+  become: false
+  stat:
+    path: "{{ TEMPLATE_DIR }}/rtcc_updateRegistry.sh.j2"
+  register: custom_rtcc_updateRegistry
+
+- name: Prepare rtcc_updateRegistry.sh
+  template:
+    src: "{{ TEMPLATE_DIR + '/' if custom_rtcc_updateRegistry.stat.exists else '' }}rtcc_updateRegistry.sh.j2"
+    dest: "{{ infinys_dir }}/install/rtcc_updateRegistry.sh"
+    owner: "{{ RBM_BE_USER }}"
+    group: "{{ RBM_BE_GROUP }}"
+    mode: 0755
+
+- name: Start rtcc_updateRegistry.sh
+  register: systemregistry
+  shell: |
+    source ./infinys.env
+    {{ infinys_dir }}/install/rtcc_updateRegistry.sh
+  args:
+    chdir: "{{ infinys_dir }}"
+  tags:
+    - skip_ansible_lint
+
+- debug:
+    msg: "{{ systemregistry.stdout }}"
+  when: not ansible_check_mode
+
+- name: Update ECA-UDM configuration
+  no_log: True
+  shell: |
+    source ./infinys.env
+    {% if ECA is defined and ECA_BALANCER is defined %}
+    updateUDMRegistry.ksh {{ ECA.username }} $rbm_eca_password http://{{ ECA_BALANCER.host }}:{{ ECA_BALANCER.port }}/eca-webservices/services
+    {% endif %}
+  args:
+    chdir: "{{ infinys_dir }}"
+  environment:
+    rbm_eca_password: "{{ ECA.password }}"
+  tags:
+    - skip_ansible_lint
+    - update_registry_passwords
+
+- name: Update QCM configuration
+  no_log: True
+  shell: |
+    source ./infinys.env
+    if [[ -f $INFINYS_ROOT/RB/bin/encryptText.ksh ]]; then
+      password=$($INFINYS_ROOT/RB/bin/encryptText.ksh $rbm_qcm_api_password)
+      isEncrypted='T'
+    else
+      password=$rbm_qcm_api_password
+      isEncrypted='F'
+    fi
+    updateRegistry.ksh /Infinys/RB/QCM/RestServiceConfig/User "{{ QCM_API.username }}"
+    updateRegistry.ksh /Infinys/RB/QCM/RestServiceConfig/Pass $password
+    updateRegistry.ksh /Infinys/RB/QCM/RestServiceConfig/Port {{ QCM_API.port }}
+    updateRegistry.ksh /Infinys/RB/QCM/RestServiceConfig/isEncrypted $isEncrypted
+  args:
+    chdir: "{{ infinys_dir }}"
+  environment:
+    rbm_qcm_api_password: "{{ QCM_API.password }}"
+  tags:
+    - skip_ansible_lint
+    - update_registry_passwords
+
+- name: Update UIM configuration
+  no_log: True
+  shell: |
+    source ./infinys.env
+    {% if UIM_API is defined %}
+    if [[ -f $INFINYS_ROOT/RB/bin/encryptText.ksh ]]; then
+      password=$($INFINYS_ROOT/RB/bin/encryptText.ksh $rbm_uim_api_password)
+      isEncrypted='T'
+    else
+      password=$rbm_uim_api_password
+      isEncrypted='F'
+    fi
+    updateRegistry.ksh /Infinys/RB/UIM/USERNAME {{ UIM_API.username }}
+    updateRegistry.ksh /Infinys/RB/UIM/PASSWORD $password
+    updateRegistry.ksh /Infinys/RB/UIM/isEncrypted $isEncrypted
+    {% endif %}
+  args:
+    chdir: "{{ infinys_dir }}"
+  environment:
+    rbm_uim_api_password: "{{ UIM_API.password }}"
+  tags:
+    - skip_ansible_lint
+    - update_registry_passwords
+
+- name: Update Cassandra configuration
+  no_log: True
+  shell: |
+    source ./infinys.env
+    {% if groups["CASSANDRA"] is defined %}
+    {% for site_id in groups['CASSANDRA'] | map('extract', hostvars, ['site']) | list | unique %}
+    updateRegistry.ksh /Infinys/RB/SMART/CassConfig/Site{{ site_id }}/Keyspace {{ CASSANDRA_SMART.keyspace }}
+    updateRegistry.ksh /Infinys/RB/SMART/CassConfig/Site{{ site_id }}/Port {{ CASSANDRA_SMART.cassandra_port }}
+    updateRegistry.ksh /Infinys/RB/SMART/CassConfig/Site{{ site_id }}/User {{ CASSANDRA_SMART.username }}
+    if [[ -f $INFINYS_ROOT/RB/bin/encryptText.ksh ]]; then
+      password=$($INFINYS_ROOT/RB/bin/encryptText.ksh $rbm_cassandra_smart_user_password)
+      isEncrypted='T'
+    else
+      password=$rbm_cassandra_smart_user_password
+      isEncrypted='F'
+    fi
+    updateRegistry.ksh /Infinys/RB/SMART/CassConfig/Site{{ site_id }}/Pass $password
+    updateRegistry.ksh /Infinys/RB/SMART/CassConfig/Site{{ site_id }}/isEncrypted $isEncrypted
+    updateRegistry.ksh /Infinys/RB/SMART/CassConfig/Pass $password
+    updateRegistry.ksh /Infinys/RB/SMART/CassConfig/isEncrypted $isEncrypted
+    {% endfor %}
+    {% endif %}
+  args:
+    chdir: "{{ infinys_dir }}"
+  environment:
+    rbm_cassandra_smart_user_password: "{{ CASSANDRA_SMART.user_password }}"
+  tags:
+    - skip_ansible_lint
+    - update_registry_passwords

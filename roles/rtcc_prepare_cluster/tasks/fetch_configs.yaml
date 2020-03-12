@@ -1,0 +1,9 @@
+---
+- name: Begin fetching
+  include_role:
+    name: get_configs
+    tasks_from: fetch_from_fs.yaml
+  vars:
+    template_files:
+      - { template: 'settings.env.j2', 'remote_file':'{{ HA_ROOT }}/local/settings.env' }
+    application_name: rtcc

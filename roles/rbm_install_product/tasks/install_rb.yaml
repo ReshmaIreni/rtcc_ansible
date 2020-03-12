@@ -1,0 +1,116 @@
+---
+- name: Upload RB package
+  include_role:
+    name: upload_patch
+    tasks_from: single_patches
+  vars:
+    components_list: "{{ rbm_components.product }}"
+    component_name: "RB"
+    pattern: "{{ rbm_patterns.rb }}"
+  when: rbm_components is defined
+
+- name: "Check RB file in {{ kits_dir }}"
+  find:
+    paths: "{{ kits_dir }}"
+    patterns: "{{ rbm_patterns.rb }}"
+    use_regex: yes
+  register: rb_found
+  when: rbm_components is undefined
+
+- name: Set RB package
+  set_fact:
+    rb_pkg: |
+      {% if rbm_components is defined -%}
+      {{ [match] | map('regex_replace', '(.*)', '{{ kits_dir }}/\1') | list if match | length else [] }}
+      {%- else -%}
+      {{ rb_found.files | map(attribute='path') | list }}
+      {%- endif %}
+
+- name: Upload rbtest package
+  include_role:
+    name: upload_patch
+    tasks_from: single_patches
+  vars:
+    components_list: "{{ rbm_components.product }}"
+    component_name: "rbtest"
+    pattern: "{{ rbm_patterns.rbtest }}"
+  when: rbm_components is defined
+
+- name: "Check rbtest file in {{ kits_dir }}"
+  find:
+    paths: "{{ kits_dir }}"
+    patterns: "{{ rbm_patterns.rbtest }}"
+    use_regex: yes
+  register: rbtest_pkg
+
+- name: Install RB
+  include_role:
+    name: install_ai
+  vars:
+    install_ai_netcracker_home: "{{ infinys_dir }}"
+    install_ai_patch_path: "{{ item }}"
+    install_ai_args: "-skip_sqltest"
+    install_ai_config_files: ['config_RB.properties']
+    install_ai_predefined_properties:
+      rb_security_password: "{{ rb_security_password }}"
+      backend.taskMaster.systemMonitorPort: "{{ tm_sm_port }}"
+      backend.taskMaster.childProcessPort: "{{ tm_child_pp }}"
+      schemaUpgrade.InternalUpgrade: "{{ 'yes' if (internal_upgrade == 'auto' or internal_upgrade == 'yes') and (rbtest_pkg.files | length) else 'no' }}"
+      schemaUpgrade.SchemaTopUpFile: "{{ rbtest_pkg.files.0.path | basename if rbtest_pkg.files | length != 0 else '' }}"
+      schemaUpgrade.SchemaTopUpDir: "{{ kits_dir }}"
+      backend.taskMaster.hostName: "{{ rbm_be_hostname }}"
+      DConfigAgentPort: "{{ dcfg_agent_port }}"
+      backend.dconfig.port: "{{ dcfg_bck_port }}"
+      backend.testRateDaemon.port: "{{ testrate_dport }}"
+      #Tablespace settings
+      gAccountEventTabTS1: "{{ merge_oracle_tablespaces.gAccountEventTabTS1 }}"
+      gActivityTabTS1: "{{ merge_oracle_tablespaces.gActivityTabTS1 }}"
+      gActivityIndTS1: "{{ merge_oracle_tablespaces.gActivityIndTS1 }}"
+      gBillTabTS1: "{{ merge_oracle_tablespaces.gBillTabTS1 }}"
+      gBillIndTS1: "{{ merge_oracle_tablespaces.gBillIndTS1 }}"
+      gCostedEventTabTS1: "{{ merge_oracle_tablespaces.gCostedEventTabTS1 }}"
+      gCostedEventIndTS1: "{{ merge_oracle_tablespaces.gCostedEventIndTS1 }}"
+      gCostedEventEeaTabTS1: "{{ merge_oracle_tablespaces.gCostedEventEeaTabTS1 }}"
+      gCustomerTabTS1: "{{ merge_oracle_tablespaces.gCustomerTabTS1 }}"
+      gCustomerIndTS1: "{{ merge_oracle_tablespaces.gCustomerIndTS1 }}"
+      gDeleteEventTabTS1: "{{ merge_oracle_tablespaces.gDeleteEventTabTS1 }}"
+      gDeleteEventIndTS1: "{{ merge_oracle_tablespaces.gDeleteEventIndTS1 }}"
+      gDeleteEventEeaTabTS1: "{{ merge_oracle_tablespaces.gDeleteEventEeaTabTS1 }}"
+      gLargeCatTabTS1: "{{ merge_oracle_tablespaces.gLargeCatTabTS1 }}"
+      gLargeCatIndTS1: "{{ merge_oracle_tablespaces.gLargeCatIndTS1 }}"
+      gMediumCatTabTS1: "{{ merge_oracle_tablespaces.gMediumCatTabTS1 }}"
+      gMediumCatIndTS1: "{{ merge_oracle_tablespaces.gMediumCatIndTS1 }}"
+      gPeriodicTabTS1: "{{ merge_oracle_tablespaces.gPeriodicTabTS1 }}"
+      gPeriodicIndTS1: "{{ merge_oracle_tablespaces.gPeriodicIndTS1 }}"
+      gRechargeEventPaymentTabTS1: "{{ merge_oracle_tablespaces.gRechargeEventPaymentTabTS1 }}"
+      gRechargeEventPaymentIndTS1: "{{ merge_oracle_tablespaces.gRechargeEventPaymentIndTS1 }}"
+      gSmallTabTS1: "{{ merge_oracle_tablespaces.gSmallTabTS1 }}"
+      gSmallIndTS1: "{{ merge_oracle_tablespaces.gSmallIndTS1 }}"
+      gTransientAntiEventTabTS1: "{{ merge_oracle_tablespaces.gTransientAntiEventTabTS1 }}"
+      gTransientAntiEventIndTS1: "{{ merge_oracle_tablespaces.gTransientAntiEventIndTS1 }}"
+      gTransientTabTS1: "{{ merge_oracle_tablespaces.gTransientTabTS1 }}"
+      gTransientIndTS1: "{{ merge_oracle_tablespaces.gTransientIndTS1 }}"
+      gPartialEventTabTS1: "{{ merge_oracle_tablespaces.gPartialEventTabTS1 }}"
+      gPartialEventIndTS1: "{{ merge_oracle_tablespaces.gPartialEventIndTS1 }}"
+      gDuplicateCheckTabTS1: "{{ merge_oracle_tablespaces.gDuplicateCheckTabTS1 }}"
+      gDuplicateCheckIndTS1: "{{ merge_oracle_tablespaces.gDuplicateCheckIndTS1 }}"
+      gQueueTabTS1: "{{ merge_oracle_tablespaces.gQueueTabTS1 }}"
+      gEmptyTS1: "{{ merge_oracle_tablespaces.gEmptyTS1 }}"
+    install_ai_additional_properties: "{{ rb_properties }}"
+  with_items: "{{ rb_pkg }}"
+
+- name: Check platform.cfg template
+  delegate_to: localhost
+  become: false
+  stat:
+    path: "{{ TEMPLATE_DIR }}/platform.cfg.j2"
+  register: custom_platform_xml
+
+- name: Create platform.cfg
+  template:
+    src: "{{ TEMPLATE_DIR }}/platform.cfg.j2"
+    dest: "{{ infinys_dir }}/platform.cfg"
+    owner: "{{ RBM_BE_USER }}"
+    group: "{{ RBM_BE_GROUP }}"
+    mode: 0644
+  when: custom_platform_xml.stat.exists

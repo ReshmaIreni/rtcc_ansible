@@ -1,0 +1,18 @@
+---
+
+- name: Begin fetching
+  include_role:
+    name: get_configs
+    tasks_from: fetch_from_fs
+  vars:
+    template_files:
+      - { template: 'instanceArgsFile.args.j2', 'remote_file':'{{ infinys_dir }}/instanceArgsFile.args' }
+    application_name: rtcc
+
+
+- name: Begin fetching
+  vars:
+    var_file_with_params_description: query_params.yaml
+  include_role:
+    name: rbm_get_params_from_db
+  when: type != 'local'

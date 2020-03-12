@@ -1,0 +1,22 @@
+---
+- name: Check rbm_components.yaml exist in Ansible control machine
+  delegate_to: localhost
+  become: false
+  stat:
+    path: "{{ inventory_dir }}/{{ components_file }}"
+  register: rbm_components_file
+
+- debug:
+    msg: "[WARNING] {{ inventory_dir }}/{{ components_file }} not found!"
+  when:
+    - not rbm_components_file.stat.exists
+    - not ansible_check_mode
+
+- name: "Include vars of {{ components_file }}"
+  include_vars:
+    file: "{{ inventory_dir }}/{{ components_file }}"
+  when: rbm_components_file.stat.exists
+
+- name: Include rbm_patterns
+  include_vars:
+    file: main.yaml

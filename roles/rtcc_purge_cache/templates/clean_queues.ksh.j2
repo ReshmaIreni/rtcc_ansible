@@ -1,0 +1,30 @@
+#!/bin/ksh
+cd {{ infinys_dir }}
+source ./infinys.env
+
+{% for service_name, domain_groups in DOMAIN_GROUPS_ASSIGNMENT.iteritems() %}
+{% for domain in domain_groups %}
+ 
+sqlplus geneva_admin/{{rb_logon_password}}@{{service_name}}<<EOL
+DECLARE
+  po dbms_aqadm.aq\$_purge_options_t;
+BEGIN
+  po.block := FALSE;
+  BEGIN
+    DBMS_AQADM.PURGE_QUEUE_TABLE(
+      queue_table => 'RATEDEVENTQUEUE{{ DOMAIN_GROUPS[domain.domain_group].domain_group_id }}HEAD',
+      purge_condition => NULL,
+      purge_options => po);
+  EXCEPTION
+    WHEN OTHERS THEN
+      IF SQLCODE != -24002 THEN
+        RAISE;
+      END IF;
+  END;
+END;
+/
+exit;
+EOL
+
+{% endfor %} 
+{% endfor %} 

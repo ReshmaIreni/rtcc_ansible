@@ -1,0 +1,16 @@
+SET SERVEROUTPUT ON
+
+BEGIN
+	FOR x IN
+	(
+		SELECT 'ALTER INDEX '||TABLE_OWNER||'.'||INDEX_NAME||' REBUILD ONLINE PARALLEL' comm
+		FROM    user_indexes
+		WHERE   status = 'UNUSABLE'
+	)
+	LOOP
+		dbms_output.put_line(x.comm);
+		EXECUTE immediate x.comm;
+	END LOOP;
+END;
+/
+EXIT

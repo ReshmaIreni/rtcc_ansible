@@ -1,0 +1,114 @@
+---
+- name: "Checking the path and amount of free space"
+  shell: |
+    #set -o pipefail
+    templ={{ check_free_space_validate_path }}
+    # while $templ directory does not exist
+    while [ ! -d "$templ" ]; do
+      templ=$(dirname $templ)
+      # if $templ is not contain '/' character
+      if [[ $templ != *"/"* ]]; then
+        templ="/"
+        break
+      fi
+    done;
+    df -h $templ | awk 'FNR==2{print $0}'
+  changed_when: False
+  register: check_free_space_out_string
+  tags:
+    - skip_ansible_lint
+
+- name: "Processing a report on blocks of free space in disk"
+  set_fact:
+    check_free_space_report_on_disk: "{{ check_free_space_out_string.stdout.split() }}"
+
+- name: "Initialization of variables"
+  set_fact:
+    check_free_space_filesystem: "{{ check_free_space_report_on_disk[0] }}"
+    check_free_space_space_size: "{{ check_free_space_report_on_disk[1] }}"
+    check_free_space_space_used: "{{ check_free_space_report_on_disk[2] }}"
+    check_free_space_space_avail: "{{ check_free_space_report_on_disk[3] }}"
+    check_free_space_space_use: "{{ check_free_space_report_on_disk[4] }}"
+    check_free_space_mounted_on: "{{ check_free_space_report_on_disk[5] }}"
+
+- name: "Convert check_free_space_space_avail to a common unit of measurement (MB)."
+  no_log: true
+  set_fact:
+    check_free_space_avail_converted: |
+      {%- set space_avail_values = check_free_space_space_avail | regex_search('\d+') -%}
+      {%- set space_avail_dimentions = check_free_space_space_avail | regex_search('\D+') | default(' ') -%}
+      {%- if not space_avail_dimentions | length -%}
+      {{   space_avail_values | int / 1024 / 1024 }}
+      {%- elif space_avail_dimentions == 'K' -%}
+      {{   space_avail_values | int / 1024 }}
+      {%- elif space_avail_dimentions == 'M' -%}
+      {{   space_avail_values | int }}
+      {%- elif space_avail_dimentions == 'G' -%}
+      {{   space_avail_values | int * 1024 }}
+      {%- elif space_avail_dimentions == 'T' -%}
+      {{   space_avail_values | int * 1024 * 1024 }}
+      {%- endif -%}
+
+- name: "Convert minimum_free_space to a common unit of measurement (MB)."
+  no_log: true
+  set_fact:
+    minimum_free_space_converted: |
+      {%- set minimum_free_space_values = minimum_free_space | regex_search('\d+') -%}
+      {%- set minimum_free_space_dimentions = minimum_free_space | regex_search('\D+') | default(' ') -%}
+      {%- if not minimum_free_space_dimentions | length -%}
+      {{   minimum_free_space_values | int / 1024 / 1024 }}
+      {%- elif minimum_free_space_dimentions == 'K' -%}
+      {{   minimum_free_space_values | int / 1024 }}
+      {%- elif minimum_free_space_dimentions == 'M' -%}
+      {{   minimum_free_space_values | int }}
+      {%- elif minimum_free_space_dimentions == 'G' -%}
+      {{   minimum_free_space_values | int * 1024 }}
+      {%- elif minimum_free_space_dimentions == 'T' -%}
+      {{   minimum_free_space_values | int * 1024 * 1024 }}
+      {%- endif -%}
+
+- name: "Create message"
+  no_log: true
+  set_fact:
+    check_free_space_message: |-
+      There is {{ check_free_space_space_avail }} free space in the {{ check_free_space_mounted_on }} directory.
+      {{ ' ' | safe }}{{ '-' * 15 }} {{ '-' * 15 }}
+      {{ '| %-14s| %-15s' | format('Filesystem', check_free_space_filesystem) }}
+      {{ ' ' | safe }}{{ '-' * 15 }} {{ '-' * 15 }}
+      {{ '| %-14s| %-15s' | format('Size', check_free_space_space_size) }}
+      {{ ' ' | safe }}{{ '-' * 15 }} {{ '-' * 15 }}
+      {{ '| %-14s| %-15s' | format('Used', check_free_space_space_used) }}
+      {{ ' ' | safe }}{{ '-' * 15 }} {{ '-' * 15 }}
+      {{ '| %-14s| %-15s' | format('Avail', check_free_space_space_avail) }}
+      {{ ' ' | safe }}{{ '-' * 15 }} {{ '-' * 15 }}
+      {{ '| %-14s| %-15s' | format('Use%', check_free_space_space_use) }}
+      {{ ' ' | safe }}{{ '-' * 15 }} {{ '-' * 15 }}
+      {{ '| %-14s| %-15s' | format('Mounted on', check_free_space_mounted_on) }}
+      {{ ' ' | safe }}{{ '-' * 15 }} {{ '-' * 15 }}
+      {{ '[ERROR]' if (check_free_space_fail_on_error and
+                        (minimum_free_space_converted | int >= check_free_space_avail_converted | int))
+                     else '[WARNING]' }} There is not enough free space on hard drive.
+      {{ '[ERROR]' if (check_free_space_fail_on_error and
+                        (minimum_free_space_converted | int >= check_free_space_avail_converted | int))
+                     else '[WARNING]' }} It is needed more than {{ minimum_free_space }}(byte) free space.
+
+- name: "Fail installing process"
+  fail:
+    msg: "{{ check_free_space_message }}"
+  when:
+    - check_free_space_fail_on_error
+    - minimum_free_space_converted | int >= check_free_space_avail_converted | int
+
+- name: "Warning message"
+  debug:
+    msg: "{{ check_free_space_message }}"
+  when:
+    - not check_free_space_fail_on_error
+    - minimum_free_space_converted | int >= check_free_space_avail_converted | int
+
+- name: "Info message"
+  debug:
+    msg: "It is needed more than {{ minimum_free_space }}(byte) free space.
+          There is {{ check_free_space_space_avail }}(byte) detected on a hard drive."
+  when:
+    - minimum_free_space_converted | int < check_free_space_avail_converted | int

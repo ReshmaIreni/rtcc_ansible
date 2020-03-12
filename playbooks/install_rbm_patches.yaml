@@ -1,0 +1,129 @@
+---
+- name: Preinstall validate. Check defined directories on nodes of BE groups
+  hosts: RBM_BE_APP
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: false
+  tags: always
+  roles:
+    - preinstall_validate
+  vars:
+    list: 'rbm_patches_vars.yml'
+    var_file_with_dirs_for_nodes: 'rbm_patches_dirs.yaml'
+    preinstall_validate_ts_host_list: "{{ groups['RBM_BE_DB'] }}"
+    preinstall_validate_ts_sql_script_dest_path: "{{ infinys_dir }}/scripts"
+    preinstall_validate_etalon_tablespaces: "{{ oracle_be_tablespaces_size | d({}) }}"
+
+- name: Preinstall
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: True
+  tags: always
+  roles:
+    - rbm_setup_vars
+
+- name: Upload patch
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags: upload
+  roles:
+    - upload_patch
+
+- name: Pre Installation Steps (RBM_BE_APP)
+  hosts: RBM_BE_APP
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - rbm_batch_pre_install
+  tasks:
+    - name: Include custom roles
+      include_role:
+        name: "{{ item }}"
+      with_items: "{{ rbm_be_app_pre_custom_roles | d([]) }}"
+
+- name: Pre Installation Steps (RBM_BE_CONFIG_NODE)
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - rbm_be_pre_install
+  tasks:
+    - name: Include custom roles
+      include_role:
+        name: "{{ item }}"
+      with_items: "{{ rbm_be_config_node_pre_custom_roles | d([]) }}"
+
+- name: Install ECA
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - install_eca
+  tasks:
+    - import_role:
+        name: rbm_install_product
+        tasks_from: install_eca
+
+- name: Install RB Core patches
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - core_patches
+  roles:
+    - rbm_install_core_patches
+  vars:
+    rbm_install_core_patches_args: "{{ rbm_ai_core_patches_args | d('') }}"
+
+- name: Install RB Custom patches
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - custom_patches
+  roles:
+    - rbm_install_custom_patches
+
+- name: Post Installation Steps (RBM_BE_CONFIG_NODE)
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - rbm_be_post_install
+  tasks:
+    - name: Include custom roles
+      include_role:
+        name: "{{ item }}"
+      with_items: "{{ rbm_be_config_node_post_custom_roles | d([]) }}"
+
+- name: Post Installation Steps (RBM_BE_APP)
+  hosts: RBM_BE_APP
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - rbm_batch_post_install
+  tasks:
+    - name: Include custom roles
+      include_role:
+        name: "{{ item }}"
+      with_items: "{{ rbm_be_app_post_custom_roles | d([]) }}"

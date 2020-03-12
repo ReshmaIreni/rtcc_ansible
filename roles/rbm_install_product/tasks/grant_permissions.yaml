@@ -1,0 +1,11 @@
+---
+- name: db_migrate_unif_admin for Upgrades
+  shell: |
+    source ./infinys.env
+    {{ infinys_dir }}/PF/bin/db_migrate_unif_admin.ksh -c {{ inf_user_name }}/$rbm_inf_user_password@{{ be_oracle_service_name }}
+  args:
+    chdir: "{{ infinys_dir }}"
+  environment:
+    rbm_inf_user_password: "{{ inf_user_password }}"
+  when:
+    - upgrade

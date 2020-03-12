@@ -1,0 +1,86 @@
+---
+# Automatically define RB internal upgrade mode basing on rbtest package existence.
+internal_upgrade: 'auto'
+
+oracle_tablespaces:
+  users: "USERS"
+  gAccountEventTabTS1: "USERS"
+  gActivityTabTS1: "USERS"
+  gActivityIndTS1: "USERS"
+  gBillTabTS1: "USERS"
+  gBillIndTS1: "USERS"
+  gCostedEventTabTS1: "USERS"
+  gCostedEventIndTS1: "USERS"
+  gCostedEventEeaTabTS1: "USERS"
+  gCustomerTabTS1: "USERS"
+  gCustomerIndTS1: "USERS"
+  gDeleteEventTabTS1: "USERS"
+  gDeleteEventIndTS1: "USERS"
+  gDeleteEventEeaTabTS1: "USERS"
+  gLargeCatTabTS1: "USERS"
+  gLargeCatIndTS1: "USERS"
+  gMediumCatTabTS1: "USERS"
+  gMediumCatIndTS1: "USERS"
+  gPeriodicTabTS1: "USERS"
+  gPeriodicIndTS1: "USERS"
+  gRechargeEventPaymentTabTS1: "USERS"
+  gRechargeEventPaymentIndTS1: "USERS"
+  gSmallTabTS1: "USERS"
+  gSmallIndTS1: "USERS"
+  gTransientAntiEventTabTS1: "USERS"
+  gTransientAntiEventIndTS1: "USERS"
+  gTransientTabTS1: "USERS"
+  gTransientIndTS1: "USERS"
+  gPartialEventTabTS1: "USERS"
+  gPartialEventIndTS1: "USERS"
+  gDuplicateCheckTabTS1: "USERS"
+  gDuplicateCheckIndTS1: "USERS"
+  gQueueTabTS1: "USERS"
+  gEmptyTS1: "USERS"
+  PF_MESSAGEBUS_TABLESPACE: "USERS"
+  PF_DATA_TABLESPACE: "USERS"
+  PF_INDEX_TABLESPACE: "USERS"
+  SMALL_TS: "USERS"
+  MEDIUM_TS: "USERS"
+  LARGE_TS: "USERS"
+  STATIC_TS: "USERS"
+  INDX_TS1: "USERS"
+  INDX_TS2: "USERS"
+  PF_AUDIT_TBS_1: "USERS"
+  PF_AUDIT_TBS_2: "USERS"
+  PF_AUDIT_TBS_3: "USERS"
+  PF_AUDIT_TBS_4: "USERS"
+  PF_AUDIT_TBS_5: "USERS"
+  PF_AUDIT_TBS_6: "USERS"
+  PF_AUDIT_TBS_PERM: "USERS"
+  PF_PCI_AUDIT_TBS_1: "USERS"
+  PF_PCI_AUDIT_TBS_2: "USERS"
+  PF_PCI_AUDIT_TBS_3: "USERS"
+  PF_PCI_AUDIT_TBS_4: "USERS"
+  PF_PCI_AUDIT_TBS_5: "USERS"
+  PF_PCI_AUDIT_TBS_6: "USERS"
+  PF_PCI_AUDIT_TBS_PERM: "USERS"
+
+# Additional UTILITIES properties
+utilities_properties: {}
+
+# Additional PF properties
+pf_properties: {}
+
+# Additional RB properties
+rb_properties: {}
+
+# Additional ECA properties
+eca_properties: {}
+
+# eca configure properties
+
+initialCapacity: 10
+
+minCapacity: 10
+
+maxCapacity: 50
+
+USER_MEM_ARGS: "-Xmx1024m -Xms512"
+
+wlst_scripts: no

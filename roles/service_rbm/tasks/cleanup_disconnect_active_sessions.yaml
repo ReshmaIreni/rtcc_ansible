@@ -1,0 +1,14 @@
+---
+
+- name: Resolve path to the script template
+  set_fact:
+    cleanup_disconnect_active_sessions_template_file_path: "{{ role_path }}/templates/cleanup_disconnect_active_sessions.sql.j2"
+
+- name: Copy and call cleanup_disconnect_active_sessions.sql on hosts {{ cleanup_disconnect_active_sessions_host_list }}
+  include_role:
+    name: service_rbm
+    tasks_from: cleanup_execute_sql_script.yaml
+  vars:
+    cleanup_execute_sql_script_template_file: "{{ cleanup_disconnect_active_sessions_template_file_path }}"
+    cleanup_execute_sql_script_dest_file: "{{ cleanup_disconnect_active_sessions_file_dest_dir }}/cleanup_disconnect_active_sessions.sql"
+    cleanup_execute_sql_script_host_list: "{{ cleanup_disconnect_active_sessions_host_list }}"

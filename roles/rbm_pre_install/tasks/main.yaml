@@ -1,0 +1,4 @@
+---
+- debug:
+    msg: Preinstall RBM
+  when: not ansible_check_mode

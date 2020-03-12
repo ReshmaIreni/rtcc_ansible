@@ -1,0 +1,7 @@
+---
+gathering_logs_to_archive:
+  - "{{ infinys_dir }}/installer_logs"
+  - "{{ infinys_dir }}/LOGS"
+  - "{{ infinys_dir }}/COLLECTIONS*SCRIPTS/LOG_FILES"
+  - "{{ infinys_dir }}/STAGE/RB/RB/schema/olc/logs"
+  - "{{ infinys_dir }}/instanceArgsFile.args.*.out"

@@ -1,0 +1,94 @@
+---
+- name: Encrypt RTCC database password
+  shell: |
+    source ./infinys.env
+    {{ infinys_dir }}/RB/bin/encryptPwd -s
+  args:
+    chdir: "{{ infinys_dir }}"
+  environment:
+    ENC_PASS_TEST: "{{ rtcc_database_password }}"
+  register: rtcc_database_password_encrypted
+  changed_when: false
+
+- name: prov.config generation
+  template:
+    src: prov.config.j2
+    dest: "{{ prov_staging_home }}/prov.config"
+
+- name: Add permissions for scripts folder
+  no_log: True
+  file:
+    path: "{{ infinys_dir }}/scripts"
+    mode: 0755
+
+- name: Start RBprovisionOLC.ksh -s
+  shell: |
+    source ./infinys.env
+    {{ infinys_dir }}/RB/bin/RBprovisionOLC.ksh -s
+  args:
+    chdir: "{{ infinys_dir }}"
+  tags:
+    - skip_ansible_lint
+
+- name: Check release_info.xml
+  stat:
+    path: "{{ infinys_dir }}/RB/bin/release_info.xml"
+  register: release_info
+
+- name: Read release_info.xml
+  xml:
+    path: "{{ infinys_dir }}/RB/bin/release_info.xml"
+    xpath: /RB
+    content: attribute
+    attribute: version
+  when:
+    - release_info.stat.exists
+  register: xml_version
+
+- name: Set release_info version
+  set_fact:
+    rb_base_version: "RB-{{ xml_version.matches[0].RB.version }}{{ '.rc' + xml_version.matches[0].RB.rc if xml_version.matches[0].RB.rc | length else ''}}"
+  when:
+    - release_info.stat.exists
+
+- include_tasks: deploy_to_cluster.yaml
+  vars:
+    rbm_base_version: "{{ rb_base_version }}"
+
+- name: Find RB staged directories
+  find:
+    paths: "{{ prov_staging_home }}"
+    file_type: directory
+    patterns: "RB-[0-9.]+(rc\\d+)?"
+    use_regex: yes
+    recurse: yes
+  register: rb_staged_releases
+
+- name: Set last RB staged release version
+  set_fact:
+    rb_staged_release: "{{ rb_staged_releases.files | map(attribute='path') | list | version_sort | last | basename }}"
+
+- name: Validate patches versions
+  fail:
+    msg: "Provisioned version {{ rb_staged_release }} is not the same as release_info.xml version {{ rb_base_version }}"
+  when:
+    - rb_staged_release != rb_base_version
+
+- name: "Add run permissions for staged releases in {{ prov_staging_home }}"
+  no_log: True
+  file:
+    path: "{{ item }}/RB/bin"
+    mode: 0755
+    recurse: yes
+  with_items: "{{ rb_staged_releases.files | map(attribute='path') | list | version_sort }}"
+
+- name: "Grant permissions for folder {{ prov_staging_home }}/lX"
+  file:
+    path: "{{ prov_staging_home }}/lX"
+    owner: "{{ RBM_BE_USER }}"
+    group: "{{ RBM_BE_GROUP }}"
+    mode: "0777"
+    state: directory
+    recurse: no
+  when:
+    - rtcc_rolling_update

@@ -1,0 +1,92 @@
+---
+- hosts: localhost
+  connection: local
+  tags:
+    - always
+  tasks:
+    - name: Define fetched and etalon dirs
+      set_fact:
+        fetched_dir: "{{ output_location }}/fetched_configs/fetched"
+        ethalon_dir: "{{ output_location }}/fetched_configs/ethalons"
+
+    - name: Delete fetched_configs directory
+      file:
+        path: "{{ output_location }}/fetched_configs"
+        state: absent
+
+    - name: Create directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0775'
+      with_items:
+        - "{{ output_location }}/fetched_configs"
+        - "{{ fetched_dir }}"
+        - "{{ ethalon_dir }}"
+
+- hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  tags:
+    - always
+  vars:
+    type: BE
+    fetched_dir: "{{ output_location }}/fetched_configs/fetched"
+    ethalon_dir: "{{ output_location }}/fetched_configs/ethalons"
+    ansible_ssh_pipelining: yes
+  tasks:
+    - import_role:
+        name: rbm_install_core_patches
+        tasks_from: fetch_configs
+    - import_role:
+        name: rtcc_configure_cluster
+        tasks_from: fetch_configs
+    - import_role:
+        name: rtcc_install_cache
+        tasks_from: fetch_configs
+    - import_role:
+        name: rtcc_load_cache
+        tasks_from: fetch_configs
+    - import_role:
+        name: rtcc_update_registry
+        tasks_from: fetch_configs
+
+- hosts: CLUSTER_CONFIG_NODE
+  become: true
+  remote_user: "{{ rtcc_remote_user | default(RBM_FE_USER) }}"
+  become_user: "{{ rtcc_become_user | default(RBM_FE_USER) }}"
+  tags:
+    - RTCC
+  vars:
+    type: FE
+    fetched_dir: "{{ output_location }}/fetched_configs/fetched"
+    ethalon_dir: "{{ output_location }}/fetched_configs/ethalons"
+    ansible_ssh_pipelining: yes
+  tasks:
+    - import_role:
+        name: rtcc_prepare_cluster
+        tasks_from: fetch_configs
+
+- hosts: localhost
+  connection: local
+  tags:
+    - always
+  vars:
+    type: local
+  tasks:
+    - import_role:
+        name: rbm_install_core_patches
+        tasks_from: fetch_configs
+    - import_role:
+        name: rtcc_configure_cluster
+        tasks_from: fetch_configs
+    - import_role:
+        name: rtcc_install_cache
+        tasks_from: fetch_configs
+    - import_role:
+        name: rtcc_update_registry
+        tasks_from: fetch_configs
+    - import_role:
+        name: rtcc_prepare_cluster
+        tasks_from: fetch_configs

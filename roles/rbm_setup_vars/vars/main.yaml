@@ -1,0 +1,13 @@
+---
+rbm_patterns:
+  autoinstaller: 'AutoInstaller.*.zip'
+  utilities: 'UTILITIES.*_autoinstaller.zip'
+  pf: 'PF-[0-9.]+.*_autoinstaller.zip'
+  rb: '(RB|NRM)-[0-9.]+.*_autoinstaller.zip'
+  rb_delta: '(RB|NRM)-[0-9.]+.*_delta_autoinstaller.*zip'
+  cm_ui: '.*CM_UI.*autoinstaller.zip'
+  cm_server: '.*CM_CORE.*autoinstaller.zip'
+  cm_server_patch: '.*CM_PATCH_CORE.*autoinstaller.zip'
+  custom: '.*{{ CUSTOMER_NAME }}.*_autoinstaller.zip'
+  rbtest: 'rbtest-.*.zip'
+  eca: 'ECA-[0-9.]+.*_autoinstaller.zip'

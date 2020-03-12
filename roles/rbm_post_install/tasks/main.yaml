@@ -1,0 +1,4 @@
+---
+- debug:
+    msg: Postinstall RBM
+  when: not ansible_check_mode

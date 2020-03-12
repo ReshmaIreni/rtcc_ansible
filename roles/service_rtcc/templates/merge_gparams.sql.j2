@@ -1,0 +1,22 @@
+{% for p in merge_gparams_lines %}
+
+{% if p.type=='STRING' %} {% set field_name, quote_sign = 'STRING_VALUE', "'" %} {% else %} {% set field_name, quote_sign = 'INTEGER_VALUE', "" %} {% endif %}
+
+merge into GPARAMS t
+using
+(
+  select
+      '{{ p.param_name }}' as NAME
+  from dual
+) v
+  on
+(
+  t.NAME = v.NAME
+)
+  when matched then update set TYPE = '{{ p.type }}', START_DTM = {{ p.start_dtm }}, {{field_name}} =  {{quote_sign}}{{ p.value }}{{quote_sign}}
+  when not matched then insert (NAME,TYPE, START_DTM, {{field_name}})
+  values (v.NAME, '{{ p.type }}', {{ p.start_dtm }}, {{quote_sign}}{{ p.value }}{{quote_sign}});
+{% endfor %}
+
+commit;
+EXIT;

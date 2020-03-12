@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="US-ASCII" standalone="no"?>
+<amfconfig xmlns:xs="http://www.w3.org/2001/XMLSchema-instance" xs:noNamespaceSchemaLocation="./amfRBMClusterinput.xsd">
+    <alias clustername="{{ CLUSTER_NAME }}" clustertype="RBM Cluster" clustertypeid="1" infinysroot="{{ HA_ROOT }}/INFINYS" platform="LINUX">
+        <node immpm="no" name="rbm-fe-s1-h1"/>
+        <node immpm="no" name="rbm-fe-s2-h1"/>
+    </alias>
+
+    <app cacheonly="yes" name="Online Charging App for RBM Cluster" sdfRASL="no" sdfStandin="no">
+        <!--
+        ************************************
+        *    TELENET REQUIRED PROCESSES    *
+        ************************************
+        -->
+
+    <amfCacheSG>
+        <amfCacheSU cache="TLNT02A" node="rbm-fe-s1-h1"/>
+        <amfCacheSU cache="TLNT02B" node="rbm-fe-s1-h1"/>
+    </amfCacheSG>
+    <amfCacheSG>
+        <amfCacheSU cache="TLNT03A" node="rbm-fe-s1-h2"/>
+        <amfCacheSU cache="TLNT03B" node="rbm-fe-s1-h2"/>
+    </amfCacheSG>
+    <amfCacheSG>
+        <amfCacheSU cache="TLNT04A" node="rbm-fe-s2-h1"/>
+        <amfCacheSU cache="TLNT04B" node="rbm-fe-s2-h1"/>
+    </amfCacheSG>
+    <amfCacheSG>
+        <amfCacheSU cache="TLNT05A" node="rbm-fe-s2-h2"/>
+        <amfCacheSU cache="TLNT05B" node="rbm-fe-s2-h2"/>
+    </amfCacheSG>
+   
+
+    <amfRaterSG amfRaterCompCount="2">
+            <amfRaterSU bufferSize="20" commitSize="10" commport="14301" servicename="RBM_RATE_SERVICE" node="rbm-fe-s1-h1" ratingPoolId="1" />
+            <amfRaterSU bufferSize="20" commitSize="10" commport="14301" servicename="RBM_RATE_SERVICE" node="rbm-fe-s1-h2" ratingPoolId="1" />
+            <amfRaterSU bufferSize="20" commitSize="10" commport="14301" servicename="RBM_RATE_SERVICE" node="rbm-fe-s2-h1" ratingPoolId="1" />
+            <amfRaterSU bufferSize="20" commitSize="10" commport="14301" servicename="RBM_RATE_SERVICE" node="rbm-fe-s2-h2" ratingPoolId="1" />
+    </amfRaterSG>
+
+    <amfOELSSG amfOELSCompCount="1" targetCache="TLNT02A,TLNT02B,TLNT03A,TLNT03B,TLNT04A,TLNT04B,TLNT05A,TLNT05B">
+            <amfOELSSU bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="rbm-fe-s1-h1"/>
+            <amfOELSSU bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="rbm-fe-s1-h1"/>
+            <amfOELSSU bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="rbm-fe-s1-h2"/>
+            <amfOELSSU bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="rbm-fe-s1-h2"/>
+            <amfOELSSU bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="rbm-fe-s2-h1"/>
+            <amfOELSSU bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="rbm-fe-s2-h1"/>
+            <amfOELSSU bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="rbm-fe-s2-h2"/>
+            <amfOELSSU bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="rbm-fe-s2-h2"/>
+            <amfOELSSU bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="rbm-fe-s1-h1"/>
+            <amfOELSSU bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="rbm-fe-s1-h1"/>
+            <amfOELSSU bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="rbm-fe-s1-h2"/>
+            <amfOELSSU bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="rbm-fe-s1-h2"/>
+            <amfOELSSU bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="rbm-fe-s2-h1"/>
+            <amfOELSSU bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="rbm-fe-s2-h1"/>
+            <amfOELSSU bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="rbm-fe-s2-h2"/>
+            <amfOELSSU bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="rbm-fe-s2-h2"/>
+    </amfOELSSG>
+
+    <amfRDLSG targetCache="TLNT02A,TLNT02B,TLNT03A,TLNT03B,TLNT04A,TLNT04B,TLNT05A,TLNT05B">
+            <amfRDLSU node="rbm-fe-s1-h1"/>
+            <amfRDLSU node="rbm-fe-s1-h1"/>
+            <amfRDLSU node="rbm-fe-s1-h2"/>
+            <amfRDLSU node="rbm-fe-s1-h2"/>
+            <amfRDLSU node="rbm-fe-s2-h1"/>
+            <amfRDLSU node="rbm-fe-s2-h1"/>
+            <amfRDLSU node="rbm-fe-s2-h2"/>
+            <amfRDLSU node="rbm-fe-s2-h2"/>
+            <amfRDLSU node="rbm-fe-s1-h1"/>
+            <amfRDLSU node="rbm-fe-s1-h1"/>
+            <amfRDLSU node="rbm-fe-s1-h2"/>
+            <amfRDLSU node="rbm-fe-s1-h2"/>
+            <amfRDLSU node="rbm-fe-s2-h1"/>
+            <amfRDLSU node="rbm-fe-s2-h1"/>
+            <amfRDLSU node="rbm-fe-s2-h2"/>
+            <amfRDLSU node="rbm-fe-s2-h2"/>
+    </amfRDLSG>
+
+    <amfDUMSG amfDUMExtCompCount="1" amfDUMProdCompCount="1" targetCache="TLNT02A,TLNT02B,TLNT03A,TLNT03B,TLNT04A,TLNT04B,TLNT05A,TLNT05B">
+        <amfDUMSU commitSize="20" dumCatDelay="5000" dumCatDriver="product" dumExtensionDelay="5000" dumProductDelay="5000" node="rbm-fe-s1-h1"/>
+        <amfDUMSU commitSize="20" dumCatDelay="5000" dumCatDriver="product" dumExtensionDelay="5000" dumProductDelay="5000" node="rbm-fe-s1-h1"/>
+        <amfDUMSU commitSize="20" dumCatDelay="5000" dumCatDriver="product" dumExtensionDelay="5000" dumProductDelay="5000" node="rbm-fe-s1-h2"/>
+        <amfDUMSU commitSize="20" dumCatDelay="5000" dumCatDriver="product" dumExtensionDelay="5000" dumProductDelay="5000" node="rbm-fe-s1-h2"/>
+        <amfDUMSU commitSize="20" dumCatDelay="5000" dumCatDriver="product" dumExtensionDelay="5000" dumProductDelay="5000" node="rbm-fe-s2-h1"/>
+        <amfDUMSU commitSize="20" dumCatDelay="5000" dumCatDriver="product" dumExtensionDelay="5000" dumProductDelay="5000" node="rbm-fe-s2-h1"/>
+        <amfDUMSU commitSize="20" dumCatDelay="5000" dumCatDriver="product" dumExtensionDelay="5000" dumProductDelay="5000" node="rbm-fe-s2-h2"/>
+        <amfDUMSU commitSize="20" dumCatDelay="5000" dumCatDriver="product" dumExtensionDelay="5000" dumProductDelay="5000" node="rbm-fe-s2-h2"/>
+        <amfDUMSU commitSize="20" dumCatDelay="5000" dumCatDriver="product" dumExtensionDelay="5000" dumProductDelay="5000" node="rbm-fe-s1-h1"/>
+        <amfDUMSU commitSize="20" dumCatDelay="5000" dumCatDriver="product" dumExtensionDelay="5000" dumProductDelay="5000" node="rbm-fe-s1-h1"/>
+        <amfDUMSU commitSize="20" dumCatDelay="5000" dumCatDriver="product" dumExtensionDelay="5000" dumProductDelay="5000" node="rbm-fe-s1-h2"/>
+        <amfDUMSU commitSize="20" dumCatDelay="5000" dumCatDriver="product" dumExtensionDelay="5000" dumProductDelay="5000" node="rbm-fe-s1-h2"/>
+        <amfDUMSU commitSize="20" dumCatDelay="5000" dumCatDriver="product" dumExtensionDelay="5000" dumProductDelay="5000" node="rbm-fe-s2-h1"/>
+        <amfDUMSU commitSize="20" dumCatDelay="5000" dumCatDriver="product" dumExtensionDelay="5000" dumProductDelay="5000" node="rbm-fe-s2-h1"/>
+        <amfDUMSU commitSize="20" dumCatDelay="5000" dumCatDriver="product" dumExtensionDelay="5000" dumProductDelay="5000" node="rbm-fe-s2-h2"/>
+        <amfDUMSU commitSize="20" dumCatDelay="5000" dumCatDriver="product" dumExtensionDelay="5000" dumProductDelay="5000" node="rbm-fe-s2-h2"/>
+    </amfDUMSG>
+
+    <amfUDRUSG amfUDRUCompCount="1" targetDB="TLNT02A,TLNT02B,TLNT03A,TLNT03B,TLNT04A,TLNT04B,TLNT05A,TLNT05B">
+        <amfUDRUSU d="5000" mode="priming" node="rbm-fe-s1-h1"/>
+        <amfUDRUSU d="5000" mode="priming" node="rbm-fe-s1-h1"/>
+        <amfUDRUSU d="5000" mode="priming" node="rbm-fe-s1-h2"/>
+        <amfUDRUSU d="5000" mode="priming" node="rbm-fe-s1-h2"/>
+        <amfUDRUSU d="5000" mode="priming" node="rbm-fe-s2-h1"/>
+        <amfUDRUSU d="5000" mode="priming" node="rbm-fe-s2-h1"/>
+        <amfUDRUSU d="5000" mode="priming" node="rbm-fe-s2-h2"/>
+        <amfUDRUSU d="5000" mode="priming" node="rbm-fe-s2-h2"/>
+        <amfUDRUSU d="5000" mode="priming" node="rbm-fe-s1-h1"/>
+        <amfUDRUSU d="5000" mode="priming" node="rbm-fe-s1-h1"/>
+        <amfUDRUSU d="5000" mode="priming" node="rbm-fe-s1-h2"/>
+        <amfUDRUSU d="5000" mode="priming" node="rbm-fe-s1-h2"/>
+        <amfUDRUSU d="5000" mode="priming" node="rbm-fe-s2-h1"/>
+        <amfUDRUSU d="5000" mode="priming" node="rbm-fe-s2-h1"/>
+        <amfUDRUSU d="5000" mode="priming" node="rbm-fe-s2-h2"/>
+        <amfUDRUSU d="5000" mode="priming" node="rbm-fe-s2-h2"/>
+    </amfUDRUSG>
+
+    <amfRMPSG>
+        <amfRMPSU node="rbm-fe-s1-h1" commhost="rbm-fe-s1-h1" commport="14205" commreply="RMP_SU1_reply"/>
+        <amfRMPSU node="rbm-fe-s1-h2" commhost="rbm-fe-s1-h2" commport="14205" commreply="RMP_SU2_reply"/>
+    </amfRMPSG>
+
+    <amfBCMPSG amfBCMPCompCount="1">
+        <amfBCMPSU node="rbm-fe-s1-h1" commitSize="20" consumerGroup="CG1" topicName="bucket-expiry-topic" />
+        <amfBCMPSU node="rbm-fe-s1-h1" commitSize="20" consumerGroup="CG2" topicName="price-plan-change-topic" />
+        <amfBCMPSU node="rbm-fe-s1-h2" commitSize="20" consumerGroup="CG1" topicName="bucket-expiry-topic" />
+        <amfBCMPSU node="rbm-fe-s1-h2" commitSize="20" consumerGroup="CG2" topicName="price-plan-change-topic" />
+        <amfBCMPSU node="rbm-fe-s2-h1" commitSize="20" consumerGroup="CG1" topicName="bucket-expiry-topic" />
+        <amfBCMPSU node="rbm-fe-s2-h1" commitSize="20" consumerGroup="CG2" topicName="price-plan-change-topic" />
+        <amfBCMPSU node="rbm-fe-s2-h2" commitSize="20" consumerGroup="CG1" topicName="bucket-expiry-topic" />
+        <amfBCMPSU node="rbm-fe-s2-h2" commitSize="20" consumerGroup="CG2" topicName="price-plan-change-topic" />
+    </amfBCMPSG>
+
+    <amfOELCSG amfOELCCompCount="1" targetDG="1,2,3,4">
+            <amfOELCSU cache="TLNT01" bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="rbm-fe-s1-h1"/>
+            <amfOELCSU cache="TLNT01" bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="rbm-fe-s1-h2"/>
+            <amfOELCSU cache="TLNT01" bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="rbm-fe-s2-h1"/>
+            <amfOELCSU cache="TLNT01" bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="rbm-fe-s2-h2"/>
+            <amfOELCSU cache="TLNT01" bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="rbm-fe-s1-h1"/>
+            <amfOELCSU cache="TLNT01" bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="rbm-fe-s1-h2"/>
+            <amfOELCSU cache="TLNT01" bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="rbm-fe-s2-h1"/>
+            <amfOELCSU cache="TLNT01" bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="rbm-fe-s2-h2"/>
+    </amfOELCSG>
+
+    <amfRARSG amfRARCompCount="1" targetDG="1,2,3,4">
+            <amfRARSU mode="udru" node="rbm-fe-s1-h1"/>
+            <amfRARSU mode="udru" node="rbm-fe-s1-h2"/>
+            <amfRARSU mode="udru" node="rbm-fe-s2-h1"/>
+            <amfRARSU mode="udru" node="rbm-fe-s2-h2"/>
+            <amfRARSU mode="udru" node="rbm-fe-s1-h1"/>
+            <amfRARSU mode="udru" node="rbm-fe-s1-h2"/>
+            <amfRARSU mode="udru" node="rbm-fe-s2-h1"/>
+            <amfRARSU mode="udru" node="rbm-fe-s2-h2"/>
+    </amfRARSG>
+
+        <!--
+
+        ************************************
+        TELENET QUESTIONABLE PROCESSES
+        ************************************
+
+        -->
+
+
+        <!--
+        The High Availability Cluster Service is a process that monitors and publishes
+        elements of the AMF configuration for an RTCC solution that is running under
+        OpenSAF. It allows availability status and configuration information to be
+        retrieved and displayed in the Operational Console in real time.
+        -->
+        <!--<amfHACSSG>-->
+            <!--node - hostname-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--commport - port for the RBcommServer; must match port defined for the domain-->
+            <!--domainName - Domain group of the RBcommServer-->
+
+            <!--
+            <amfHACSSU commport="19421" domainName="HACS01" node="eln001822.corp.telenet.be"/>
+            <amfHACSSU commport="19421" domainName="HACS02" node="eln001823.corp.telenet.be"/>
+            -->
+
+        <!--</amfHACSSG>-->
+
+
+        <!--
+        The Rate Recache Token Manager is used to control the number of Active Rating
+        Engine instances that are recaching on a particular machine at any given time.
+        -->
+
+        <!--<amfRRTMSG>-->
+            <!--node - hostname-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--maxRecacheTokens (OPTIONAL) - the maximum number of recache tokens-->
+
+            <!--
+            <amfRRTMSU maxRecacheTokens="2" node="eln001822.corp.telenet.be"/>
+            <amfRRTMSU maxRecacheTokens="2" node="eln001823.corp.telenet.be"/>
+            -->
+        <!--</amfRRTMSG>-->
+
+        <!--
+        The Performance Data Collector is a Rating and Billing Manager system process
+        that collects measurements over a time period into statistical data to measure
+        the throughput and latency of mission-critical applications and components of
+        the RTCC system.
+        -->
+        <!--<amfCollSG>-->
+            <!--node - hostname-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--p - the port number for the rbsubagent-->
+
+            <!--
+            <amfCollSU node="eln001822.corp.telenet.be" p="14401"/>
+            <amfCollSU node="eln001823.corp.telenet.be" p="14401"/>
+            -->
+        <!--</amfCollSG>-->
+
+
+
+        <!--
+        The Back-End Monitor is a system process that monitors the health of a back-end
+        database and raises custom notifications when the back-end data becomes
+        available or unavailable. These custom notifications enable AIS components to
+        understand when the back-end database is available.
+        -->
+        <!--<amfBEMSG>-->
+            <!--node - hostname-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+
+            <!--
+            <amfBEMSU node="eln001822.corp.telenet.be"/>
+            <amfBEMSU node="eln001823.corp.telenet.be"/>
+            -->
+        <!--</amfBEMSG>-->
+
+        <!--
+        The Rating and Billing Transfer Process is a Rating and Billing Manager system
+        process that allows you to transfer files from one server to another server in
+        both online (real-time) environments, such as a Real-Time Convergent Charging
+        (RTCC) deployment, and offline (batch) environments. This generic transfer
+        mechanism creates jobs specific to a particular server.
+        -->
+        <!--<amfRBTPSG amfRBTPCompCount="1">-->
+            <!--node - hostname-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--mode - the mode; valid values: pull, scanPull-->
+            <!--remoteHostList (OPTIONAL) - the host to pull from when in scanPull mode-->
+
+            <!--
+            <amfRBTPSU mode="pull" node="eln001822.corp.telenet.be"/>
+            <amfRBTPSU mode="pull" node="eln001823.corp.telenet.be"/>
+            -->
+
+        <!--</amfRBTPSG>-->
+
+        <!-- / TELENET QUESTIONABLE PROCESSES -->
+
+
+
+        <!--
+        ************************************
+        TELENET DISABLED PROCESSES
+        ************************************
+        -->
+
+        <!-- Not needed with CUBE -->
+        <!--<amfRtopRaterSG amfRtopRaterCompCount="1" targetDG="1,2" />-->
+
+        <!--
+        Not needed for IT5
+        -->
+        <!--<amfRTRIDistSG />-->
+
+        <!--
+        RTED = Dist
+
+        Not needed for IT5
+
+        The Real-Time Event Distributor is a Rating and Billing Manager system process
+        that provides communication between a mediation device (Active Mediation or any
+        third-party mediation device) and the Active Rating Engine processes. The
+        communication consists of messages with events to rate, responses to mediation,
+        and pre-authorizations. The events are distributed in real-time with load
+        balancing.
+
+        -->
+        <!--<amfDistSG />-->
+
+         <!--
+        Not needed for IT5
+        -->
+        <!--<amfOELSnoELFSG amfOELSnoELFCompCount="0" targetCache="" />-->
+
+        <!-- /TELENET DISABLED PROCESSES -->
+    </app>
+</amfconfig>

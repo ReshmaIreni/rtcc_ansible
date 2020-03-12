@@ -1,0 +1,71 @@
+---
+- name: Upload PF package
+  include_role:
+    name: upload_patch
+    tasks_from: single_patches
+  vars:
+    components_list: "{{ rbm_components.product }}"
+    component_name: "PF"
+    pattern: "{{ rbm_patterns.pf }}"
+  when: rbm_components is defined
+
+- name: "Check PF file in {{ kits_dir }}"
+  find:
+    paths: "{{ kits_dir }}"
+    patterns: "{{ rbm_patterns.pf }}"
+    use_regex: yes
+  register: pf_found
+  when: rbm_components is undefined
+
+- name: Set PF package
+  set_fact:
+    pf_pkg: |
+      {% if rbm_components is defined -%}
+      {{ [match] | map('regex_replace', '(.*)', '{{ kits_dir }}/\1') | list if match|length else [] }}
+      {%- else -%}
+      {{ pf_found.files | map(attribute='path') | list }}
+      {%- endif %}
+
+- name: Install PF
+  include_role:
+    name: install_ai
+  vars:
+    install_ai_netcracker_home: "{{ infinys_dir }}"
+    install_ai_patch_path: "{{ item }}"
+    install_ai_args: "-skip_sqltest"
+    install_ai_config_files: ['config_PF.properties']
+    install_ai_predefined_properties:
+      pf_user_password: "{{ unif_password }}"
+      pf_schema_password: "{{ pf_schema_password }}"
+      pf_sec_schema_password: "{{ pf_sec_schema_password }}"
+      pf_audit_password: "{{ pf_audit_password }}"
+      pf_container_user_password: "{{ pf_container_user_password }}"
+      pf_initial_user_password: "{{ pf_initial_user_password }}"
+      pf_app_user_password: "{{ pf_app_user_password }}"
+      INF_DOMAIN_DIR: "{{ domain_root }}"
+      #Tablespace settings
+      PF_MESSAGEBUS_TABLESPACE: "{{ merge_oracle_tablespaces.pf_messagebus_tablespace }}"
+      PF_DATA_TABLESPACE: "{{ merge_oracle_tablespaces.pf_data_tablespace }}"
+      PF_INDEX_TABLESPACE: "{{ merge_oracle_tablespaces.pf_index_tablespace }}"
+      SMALL_TS: "{{ merge_oracle_tablespaces.small_ts }}"
+      MEDIUM_TS: "{{ merge_oracle_tablespaces.medium_ts }}"
+      LARGE_TS: "{{ merge_oracle_tablespaces.large_ts }}"
+      STATIC_TS: "{{ merge_oracle_tablespaces.static_ts }}"
+      INDX_TS1: "{{ merge_oracle_tablespaces.indx_ts1 }}"
+      INDX_TS2: "{{ merge_oracle_tablespaces.indx_ts2 }}"
+      PF_AUDIT_TBS_1: "{{ merge_oracle_tablespaces.pf_audit_tbs_1 }}"
+      PF_AUDIT_TBS_2: "{{ merge_oracle_tablespaces.pf_audit_tbs_2 }}"
+      PF_AUDIT_TBS_3: "{{ merge_oracle_tablespaces.pf_audit_tbs_3 }}"
+      PF_AUDIT_TBS_4: "{{ merge_oracle_tablespaces.pf_audit_tbs_4 }}"
+      PF_AUDIT_TBS_5: "{{ merge_oracle_tablespaces.pf_audit_tbs_5 }}"
+      PF_AUDIT_TBS_6: "{{ merge_oracle_tablespaces.pf_audit_tbs_6 }}"
+      PF_AUDIT_TBS_PERM: "{{ merge_oracle_tablespaces.pf_audit_tbs_perm }}"
+      PF_PCI_AUDIT_TBS_1: "{{ merge_oracle_tablespaces.pf_pci_audit_tbs_1 }}"
+      PF_PCI_AUDIT_TBS_2: "{{ merge_oracle_tablespaces.pf_pci_audit_tbs_2 }}"
+      PF_PCI_AUDIT_TBS_3: "{{ merge_oracle_tablespaces.pf_pci_audit_tbs_3 }}"
+      PF_PCI_AUDIT_TBS_4: "{{ merge_oracle_tablespaces.pf_pci_audit_tbs_4 }}"
+      PF_PCI_AUDIT_TBS_5: "{{ merge_oracle_tablespaces.pf_pci_audit_tbs_5 }}"
+      PF_PCI_AUDIT_TBS_6: "{{ merge_oracle_tablespaces.pf_pci_audit_tbs_6 }}"
+      PF_PCI_AUDIT_TBS_PERM: "{{ merge_oracle_tablespaces.pf_pci_audit_tbs_perm }}"
+    install_ai_additional_properties: "{{ pf_properties }}"
+  with_items: "{{ pf_pkg }}"

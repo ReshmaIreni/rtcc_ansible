@@ -1,0 +1,32 @@
+---
+- hosts: localhost
+  connection: local
+  tags:
+    - always
+  tasks:
+    - name: Define archive log dir
+      set_fact:
+        archive_log_dir: "{{ playbook_dir }}/../fetched_logs"
+
+    - name: Create archive log dir
+      file:
+        path: "{{ archive_log_dir }}"
+        state: directory
+        mode: '0775'
+
+    - name: Fetch ansible.log
+      copy:
+        src: "{{ playbook_dir }}/../ansible.log"
+        dest: "{{ archive_log_dir }}"
+
+- hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  tags:
+    - always
+  vars:
+    archive_log_dir: "{{ playbook_dir }}/../fetched_logs"
+    ansible_ssh_pipelining: yes
+  roles:
+    - gathering_logs

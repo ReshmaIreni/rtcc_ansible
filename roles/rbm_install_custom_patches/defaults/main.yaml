@@ -1,0 +1,40 @@
+---
+# List of custom properties files. File names should be in format 'etalon_###.properties'.
+# For example:
+#   custom_configs: "['config_RBM.CST.properties', 'config_ECA.CST.properties']"
+custom_configs: []
+
+# Dict for custom paramaters which should be updated in files from 'custom_configs'.
+# For example:
+#    custom_properties:
+#      rb_custom_user: "{{ rbm_custom_user_name }}"
+#      rb_custom_password: "{{ rbm_custom_user_password }}"
+custom_properties: {}
+
+# List of regular expressions to specify in which order custom patches should be executed
+# Patches will be ordered accordingly matches to each list element. Patches which are not
+# match to any element will be moved to the end of list.
+# For example:
+#   custom_include_mask: "['RBM.*autoinstaller.zip','PIM']"
+custom_include_mask: []
+
+# List of regular expressions to specify which custom patches should not be executed.
+# For example:
+# custom_exclude_mask: "['WCAM']"
+custom_exclude_mask: []
+
+# Custom environment variables which are necessary for operation
+# and need to be placed into infinys.env file.
+# For example:
+#   custom_variables: |
+#     export CUSTOM_ROOT={{ custom_root }}
+#     export COLLECTROOT={{ collect_root }}
+custom_variables: ""
+
+# Specified custom patch regarding which should be install other custom patches
+custom_patches_delimeter: ''
+
+# Perl home default value
+perl_home: "{{ oracle_home }}/perl"
+
+rbm_oracle_wallet_enabled: false

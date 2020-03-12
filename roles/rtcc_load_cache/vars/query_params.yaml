@@ -1,0 +1,9 @@
+---
+getter_format_output: 'to_column'
+get_params:
+  - { component: "externalconnection", sql_select: "select * from externalconnection" }
+  - { component: "ratinghost", sql_select: "select * from ratinghost" }
+  - { component: "ratingpool", sql_select: "select * from ratingpool" }
+  - { component: "cacheinstance", sql_select: "select * from cacheinstance" }
+  - { component: "domaingroup", sql_select: "select * from domaingroup" }
+application_name: rtcc

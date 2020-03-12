@@ -1,0 +1,52 @@
+---
+- include_role:
+    name: rbm_setup_vars
+
+- import_tasks: update_fe_core_patches.yaml
+  when: rtcc_ai_update_caches
+
+- import_tasks: update_fe_custom_patches.yaml
+  when: rtcc_ai_update_caches
+
+- name: Copying syncup_systemregistry.sql into {{ infinys_dir }}/scripts
+  tags: syncup_systemregistry
+  template:
+    src: "syncup_systemregistry.sql.j2"
+    dest: "{{ infinys_dir }}/scripts/syncup_systemregistry.sql"
+    owner: "{{ RBM_BE_USER }}"
+    group: "{{ RBM_BE_GROUP }}"
+    mode: 0664
+
+
+- name: "Get caches"
+  shell: |
+    source ./infinys.env
+    sqlplus -s geneva_admin/$rbm_rb_logon_password@{{ be_oracle_service_name }} << !EOF
+    set head off;
+    set feed off;
+    set linesize 1024
+    select SERVICE_NAME from CACHEINSTANCE;
+    !EOF
+  register: caches
+  tags: syncup_systemregistry
+  args:
+    chdir: "{{ infinys_dir }}"
+  environment:
+    rbm_rb_logon_password: "{{ rb_logon_password }}"
+  changed_when: false
+
+- name: "Execute syncup_systemregistry.sql script"
+  shell: |
+    source ./infinys.env
+    sqlplus -s geneva_admin/$rbm_rb_logon_password@{{ cache }} @scripts/syncup_systemregistry.sql
+  with_items: "{{ caches.stdout_lines }}"
+  loop_control:
+    loop_var: cache
+  when:
+    cache | length > 0
+  args:
+    chdir: "{{ infinys_dir }}"
+  tags: syncup_systemregistry
+  environment:
+    rbm_rb_logon_password: "{{ rb_logon_password }}"
+

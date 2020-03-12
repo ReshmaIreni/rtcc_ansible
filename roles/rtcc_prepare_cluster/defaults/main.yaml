@@ -1,0 +1,4 @@
+---
+set_traces: "no"
+rtcc_trace_shm_dir: "{{ HA_ROOT }}/logs/dynamic_traces"
+rtcc_prov_log_dir: "{{ HA_ROOT }}/logs/instantiation"

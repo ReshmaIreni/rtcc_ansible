@@ -1,0 +1,41 @@
+## Server Configuration specifies hosts names of the servers on which RTCC was installed
+
+{% for host in groups['RBM_FE_HA'] %}
+backend.servers.server{{ loop.index }}.name={{ hostvars[host].rtcc_nodename }}
+{% endfor %}
+
+## OLC cache database configuration
+
+{% for host in groups['RBM_FE_DB'] %}
+{% set outer_loop = loop %}
+## Cache database server host name
+olcCaches.oracle.cacheServer{{ outer_loop.index }}.host={{ hostvars[host].rtcc_nodename }}
+
+## Cache database server listener port number
+olcCaches.oracle.cacheServer{{ outer_loop.index }}.listnerPort={{ hostvars[host]['oracle_port'] }}
+
+{% for sid in hostvars[host]['oracle_service_name'] %}
+## Cache database server sid
+olcCaches.oracle.cacheServer{{ outer_loop.index }}.cacheDatabase{{ loop.index }}.sid={{ sid }}
+{% endfor %}
+
+
+{% endfor %}
+
+## Please set to 'y', if HA_ROOT and INFINYS_ROOT users are same. Other wise set to 'n'.
+## If set to 'y', then '${INFINYS_ROOT}/RB/bin/RBprovisionOLC.ksh' script will be executed to distribute libs, bins through AutoInstaller.
+## If set to 'n', then '${INFINYS_ROOT}/RB/bin/RBprovisionOLC.ksh' script will not be executed, user needs to execute it manually to do distribution.
+distribute.to.ha.root=n
+
+## SSH Key Path to connect to rtcc servers.
+## In case if public key is shared between the backend server, and rtcc servers with backend user and prov remote user, please set value as 'none'
+## otherwise, please set the private.key path
+## Applicable values are, 'none' or private key path
+sshKeyPath=none
+
+## The remote user which will used to connect to rtcc servers with ssh utility
+## For example, netcrk
+prov.remote.user={{ RBM_FE_USER }}
+
+## RTCC Cluster name
+cluster.name={{ CLUSTER_NAME }}

@@ -1,0 +1,106 @@
+SET SERVEROUTPUT ON;
+
+CREATE OR REPLACE PROCEDURE drop_user (user_name VARCHAR2)
+IS
+    user_does_not_exist_exception EXCEPTION;
+    PRAGMA EXCEPTION_INIT (user_does_not_exist_exception, -01918);
+BEGIN
+    EXECUTE IMMEDIATE 'DROP USER ' || user_name || ' CASCADE';
+EXCEPTION
+    WHEN user_does_not_exist_exception THEN
+        NULL;
+    WHEN OTHERS THEN
+        RAISE;
+END;
+/
+
+PROMPT dropping GENEVA_ADMIN user...
+BEGIN
+    drop_user('GENEVAADMINUSER');
+    drop_user('GENEVAADMINUSER');
+    drop_user('GENEVABATCHUSER');
+    drop_user('GENEVA_ADMIN');
+    drop_user('INF_ADMIN');
+    drop_user('IPFAPPUSER');
+    drop_user('IPF_ADMIN');
+    drop_user('IPF_AUDIT_ADMIN');
+    drop_user('IPF_SEC_ADMIN');
+    drop_user('NII_ADMIN');
+    drop_user('PAYHAN_ADMIN');
+    drop_user('SECURITY');
+    drop_user('UNIF_ADMIN');
+    drop_user('{{ rbm_custom_user_name }}');
+END;
+/
+
+CREATE OR REPLACE PROCEDURE drop_role (role_name VARCHAR2)
+IS
+    role_does_not_exist_exception EXCEPTION;
+    PRAGMA EXCEPTION_INIT (role_does_not_exist_exception, -01919);
+BEGIN
+    EXECUTE IMMEDIATE 'DROP ROLE ' || role_name;
+EXCEPTION
+    WHEN role_does_not_exist_exception THEN
+        NULL;
+    WHEN OTHERS THEN
+        RAISE;
+END;
+/
+
+BEGIN
+    drop_role('GENEVAADMIN');
+    drop_role('GENEVAAPP');
+    drop_role('GENEVABATCH');
+    drop_role('GENEVAPUBLIC');
+    drop_role('GENEVASECURITY');
+    drop_role('GENEVAVERSION');
+    drop_role('INFINYS_IM');
+    drop_role('INFINYS_PF');
+    drop_role('INFINYS_PUBLIC_INSTALL');
+    drop_role('INFINYS_RB');
+    drop_role('PF_AUDIT_ADMIN_IPF_AUDIT_ADMIN');
+    drop_role('PF_AUDIT_IPF_AUDIT_ADMIN');
+    drop_role('PF_AUDIT_READ_IPF_AUDIT_ADMIN');
+    drop_role('PF_READ_ONLY_ROLE_GENEVA_ADMIN');
+    drop_role('PF_READ_ONLY_ROLE_INF_ADMIN');
+    drop_role('PF_READ_ONLY_ROLE_IPFAPPUSER');
+    drop_role('PF_READ_ONLY_ROLE_IPF_ADMIN');
+    drop_role('PF_READ_ONLY_ROLE_NII_ADMIN');
+    drop_role('PF_READ_ONLY_ROLE_PAYHAN_ADMIN');
+    drop_role('PF_READ_ONLY_ROLE_SECURITY');
+    drop_role('PF_READ_ONLY_ROLE_UNIF_ADMIN');
+    drop_role('PF_UPDATE_ROLE_GENEVA_ADMIN');
+    drop_role('PF_UPDATE_ROLE_INF_ADMIN');
+    drop_role('PF_UPDATE_ROLE_IPFAPPUSER');
+    drop_role('PF_UPDATE_ROLE_IPF_ADMIN');
+    drop_role('PF_UPDATE_ROLE_IPF_AUDIT_ADMIN');
+    drop_role('PF_UPDATE_ROLE_IPF_SEC_ADMIN');
+    drop_role('PF_UPDATE_ROLE_NII_ADMIN');
+    drop_role('PF_UPDATE_ROLE_PAYHAN_ADMIN');
+    drop_role('PF_UPDATE_ROLE_SECURITY');
+    drop_role('PF_UPDATE_ROLE_UNIF_ADMIN');
+END;
+/
+
+-- The roles can't be dropped because their identifiers exceed 30 characters.
+DROP ROLE pf_read_only_role_ipf_audit_admin;
+DROP ROLE pf_read_only_role_ipf_sec_admin;
+
+BEGIN
+    FOR obj IN (
+        SELECT owner, synonym_name FROM dba_synonyms WHERE table_owner LIKE '%geneva_admin%' AND owner = 'public')
+    LOOP
+        EXECUTE IMMEDIATE 'DROP PUBLIC SYNONYM "'|| obj.synonym_name ||'"';
+    END LOOP;
+END;
+/
+
+BEGIN
+    FOR obj IN (
+        SELECT owner, synonym_name FROM dba_synonyms WHERE table_owner LIKE '%geneva_admin%' AND owner = 'unif_admin')
+    LOOP
+        EXECUTE IMMEDIATE 'DROP SYNONYM unif_admin."'|| obj.synonym_name ||'"';
+    END LOOP;
+END;
+/
+EXIT;

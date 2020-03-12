@@ -1,0 +1,39 @@
+---
+- name: "Check paths"
+  no_log: false
+  stat:
+    path: "{{ validate_dirs_item.path }}"
+    follow: yes
+  loop: "{{ validate_paths_list }}"
+  register: checked_path
+  loop_control:
+    loop_var: validate_dirs_item
+
+- name: "Create a list of checked directories"
+  set_fact:
+    checked_dirs: |-
+      {%- set tmp_list = [] -%}
+      {%- for result in checked_path.results  -%}
+      {%-   if result.stat.exists and result.stat.isdir and result.stat.readable  -%}
+      {{      tmp_list.append({ 'name_var': result.validate_dirs_item.note_for_error_message,
+                                 'path': result.validate_dirs_item.path,
+                                 'status': 'OK',
+                                 'msg': "Directory exists" }) }}
+      {%-   elif result.stat.exists and result.stat.isdir and not result.stat.readable  -%}
+      {{      tmp_list.append({ 'name_var': result.validate_dirs_item.note_for_error_message,
+                                 'path': result.validate_dirs_item.path,
+                                 'status': 'FAILED' if result.validate_dirs_item.stop_if_not_exist else 'WARNING',
+                                 'msg': "Directory is not readable" }) }}
+      {%-   else -%}
+      {{      tmp_list.append({ 'name_var': result.validate_dirs_item.note_for_error_message,
+                                 'path': result.validate_dirs_item.path,
+                                 'status': 'FAILED' if result.validate_dirs_item.stop_if_not_exist else 'WARNING',
+                                 'msg': 'Directory does not exist.' })  }}
+      {%-   endif -%}
+      {%- endfor  -%}
+      {{ tmp_list  }}
+
+- name: Stop processing via "fail" if any directory does not exist
+  fail:
+    msg: "{{ checked_dirs | selectattr('status', 'match', 'FAILED') | list }}"
+  when: checked_dirs | selectattr('status', 'match', 'FAILED') | list | length > 0

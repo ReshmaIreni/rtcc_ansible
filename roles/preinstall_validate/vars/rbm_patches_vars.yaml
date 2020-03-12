@@ -1,0 +1,39 @@
+---
+content:
+  ## ENVIRONMENT
+  - perl_home
+  - RBM_BE_GROUP
+  - RBM_BE_USER
+  ## RBM
+  - infinys_dir
+  - kits_dir
+  - tm_child_pp
+  - tm_sm_port
+  - dcfg_agent_port
+  ## ORACLE
+  - be_oracle_service_name
+  - oracle_db_sid
+  - oracle_home
+  - oracle_port
+  - oracle_host
+  - rbm_custom_user_name
+  - rbm_custom_user_password
+  - timezone
+  - rbm_be_db_host
+  - nls_lang
+  ## AUTOINSTALLER
+  - CUSTOMER_NAME
+  ## ECA
+  - domain_root
+  - web_server_home
+  - web_server_host
+  - web_server_port
+  - web_server_type
+dict_content:
+  - name: ECA
+    subdicts:
+      - value: ['username']
+      - value: ['password']
+  - name: oracle_tablespaces
+    subdicts:
+      - value: ['users']

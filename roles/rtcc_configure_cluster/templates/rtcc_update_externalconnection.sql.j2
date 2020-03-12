@@ -1,0 +1,116 @@
+{# Cleanup connections, so on re-run int will not make dublicates. But only for those entries that managed by RTCC Installer #}
+DELETE FROM externalconnection WHERE connection_type IN (0,1,2,4,5);
+
+{# Reset sequences after deletion #}
+DECLARE
+    next_value NUMBER;
+
+    PROCEDURE alter_sequence( seq_name    user_sequences.sequence_name%TYPE,
+                              next_value   user_sequences.last_number%TYPE := NULL,
+                              increment_by user_sequences.increment_by%TYPE := NULL,
+                              min_value    user_sequences.min_value%TYPE := NULL,
+                              max_value    user_sequences.max_value%TYPE := NULL,
+                              cycle_flag   user_sequences.cycle_flag%TYPE := NULL,
+                              cache_size   user_sequences.cache_size%TYPE := NULL,
+                              order_flag   user_sequences.order_flag%TYPE := NULL)
+    AS
+        l_seq       user_sequences%ROWTYPE;
+        l_old_cache user_sequences.cache_size%TYPE;
+        l_next      user_sequences.min_value%TYPE;
+    BEGIN
+        -- Get current sequence settings as defaults
+        SELECT *
+        INTO l_seq
+        FROM user_sequences
+        WHERE sequence_name = seq_name;
+
+        -- Update target settings
+        l_old_cache        := l_seq.cache_size;
+        l_seq.increment_by := nvl(increment_by, l_seq.increment_by);
+        l_seq.min_value    := nvl(min_value, l_seq.min_value);
+        l_seq.max_value    := nvl(max_value, l_seq.max_value);
+        l_seq.cycle_flag   := nvl(cycle_flag, l_seq.cycle_flag);
+        l_seq.cache_size   := nvl(cache_size, l_seq.cache_size);
+        l_seq.order_flag   := nvl(order_flag, l_seq.order_flag);
+
+        IF next_value IS NOT NULL
+        THEN
+            -- Determine next value without exceeding limits
+            l_next := LEAST(GREATEST(next_value, l_seq.min_value + 1), l_seq.max_value);
+
+            -- Grab the actual latest seq number
+            BEGIN
+			    EXECUTE IMMEDIATE 'ALTER SEQUENCE ' || l_seq.sequence_name || ' INCREMENT BY 1' || ' MINVALUE ' || least(l_seq.min_value, l_seq.last_number - l_old_cache) ||
+							  ' MAXVALUE ' || greatest(l_seq.max_value, l_seq.last_number) || ' NOCACHE' || ' ORDER';
+            EXCEPTION
+                WHEN OTHERS THEN NULL;
+            END;
+            EXECUTE IMMEDIATE 'SELECT ' || l_seq.sequence_name || '.NEXTVAL FROM DUAL'
+            INTO l_seq.last_number;
+
+            l_next := l_next - l_seq.last_number - 1;
+
+            -- Reset the sequence number
+            IF l_next <> 0
+            THEN
+                EXECUTE IMMEDIATE 'ALTER SEQUENCE ' || l_seq.sequence_name || ' INCREMENT BY ' || l_next || ' MINVALUE ' || least(l_seq.min_value, l_seq.last_number) ||
+                            ' MAXVALUE ' || greatest(l_seq.max_value, l_seq.last_number) || ' NOCACHE' || ' ORDER';
+                EXECUTE IMMEDIATE 'SELECT ' || l_seq.sequence_name || '.NEXTVAL FROM DUAL'
+                    INTO l_next;
+            END IF;
+        END IF;
+
+        -- Prepare Sequence for next use.
+        IF COALESCE(cycle_flag, next_value, increment_by, min_value, max_value, cache_size, order_flag) IS NOT NULL
+        THEN
+            EXECUTE IMMEDIATE 'ALTER SEQUENCE ' || l_seq.sequence_name || ' INCREMENT BY ' || l_seq.increment_by || ' MINVALUE ' || l_seq.min_value || ' MAXVALUE ' ||
+                            l_seq.max_value ||
+                            CASE l_seq.cycle_flag
+                                WHEN 'Y' THEN
+                                    ' CYCLE'
+                                ELSE
+                                    ' NOCYCLE'
+                            END ||
+                            CASE l_seq.cache_size
+                                WHEN 0 THEN
+                                    ' NOCACHE'
+                                ELSE
+                                    ' CACHE ' || l_seq.cache_size
+                            END ||
+                            CASE l_seq.order_flag
+                                WHEN 'Y' THEN
+                                    ' ORDER'
+                                ELSE
+                                    ' NOORDER'
+                            END;
+        END IF;
+    END;
+BEGIN
+    SELECT (CASE WHEN (1+NVL(MAX(connection_id),1)) < 1 THEN 1 ELSE (1+NVL(MAX(connection_id),1)) END) INTO next_value FROM externalconnection;
+    alter_sequence('EXTERNALCONNECTIONIDSEQ', next_value);
+END;
+/
+
+{% for host in groups['DDRS'] %}
+{# TODO: which port??? #}
+INSERT INTO externalconnection (connection_id, connection_type, host_name, site_id, port_number, url, identifier, use_connection_boo)
+VALUES (externalconnectionidseq.nextval, 0, '{{ hostvars[host].rtcc_nodename }}', {{ hostvars[host]['site'] }}, {{ rtcc_ddrs_port }}, 'cxf/QCMWebService/Notify', 'DDRS-{{hostvars[host]['site']}}', 'T');
+{% endfor %}
+{% for host in groups['KAFKA_SMART'] %}
+INSERT INTO externalconnection (connection_id, connection_type, host_name, site_id, port_number, url, identifier, use_connection_boo)
+VALUES (externalconnectionidseq.nextval, 1 ,'{{ hostvars[host].rtcc_nodename }}', {{ hostvars[host]['site'] }}, {{ rtcc_kafka_port }}, NULL, 'kafka-{{ hostvars[host]['site'] }}', 'T');
+{% endfor %}
+{% for host in groups['ZK'] %}
+INSERT INTO externalconnection (connection_id, connection_type, host_name, site_id, port_number, url, identifier, use_connection_boo)
+VALUES (externalconnectionidseq.nextval, 2, '{{ hostvars[host].rtcc_nodename }}', {{ hostvars[host]['site'] }}, {{ rtcc_zookeeper_port }}, NULL, 'zookeeper-{{ hostvars[host]['site'] }}', 'T');
+{% endfor %}
+{% for host in groups['CASSANDRA'] %}
+INSERT INTO externalconnection (connection_id, connection_type, host_name, site_id, port_number, url, identifier, use_connection_boo)
+VALUES (externalconnectionidseq.nextval, 4, '{{ hostvars[host].rtcc_nodename }}', {{ hostvars[host]['site'] }}, {{ rtcc_cassandra_port }}, NULL, 'cassandra-{{ hostvars[host]['site'] }}', 'T');
+{% endfor %}
+{% for host in groups['IGNITE'] %}
+INSERT INTO externalconnection (connection_id, connection_type, host_name, site_id, port_number, url, identifier, use_connection_boo)
+VALUES (externalconnectionidseq.nextval, 5, '{{ hostvars[host].rtcc_nodename }}', {{ hostvars[host]['site'] }}, {{ rtcc_ignite_port }}, 'ignite/v1/health', 'IgniteServer-{{ hostvars[host]['site'] }}','T');
+{% endfor %}
+COMMIT;
+EXIT;

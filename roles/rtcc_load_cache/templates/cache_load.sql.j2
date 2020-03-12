@@ -1,0 +1,121 @@
+truncate table domaingroup;
+truncate table DOMAINGROUPASSIGNMENT;
+truncate table CACHEDATASET;
+delete REALTIMEROUTING where  DOMAIN_GROUP_ID = 0 and EVENT_CATEGORY_ID = 0;
+COMMIT;
+
+{% for dg_name, dg_properties in DOMAIN_GROUPS.iteritems() %}
+merge into domaingroup t
+using
+(
+  select
+    {{ dg_properties.domain_group_id }} as DOMAIN_GROUP_ID,
+    '{{ dg_name }}' as DOMAIN_GROUP_NAME,
+    {{ dg_properties.start_domain_id }} as START_DOMAIN_ID,
+    {{ dg_properties.end_domain_id }} as END_DOMAIN_ID,
+    '{{ dg_properties.service_name }}' as SERVICE_NAME
+  from dual
+) v
+on
+(
+  t.DOMAIN_GROUP_ID = v.DOMAIN_GROUP_ID
+)
+when matched then
+    update set
+        DOMAIN_GROUP_NAME = v.DOMAIN_GROUP_NAME,
+        START_DOMAIN_ID = v.START_DOMAIN_ID,
+        END_DOMAIN_ID = v.END_DOMAIN_ID,
+        SHARED_CACHE_SET_ID = null,
+        SERVICE_NAME = v.SERVICE_NAME
+when not matched then
+    insert (DOMAIN_GROUP_ID, "DOMAIN_GROUP_NAME", START_DOMAIN_ID, END_DOMAIN_ID, SHARED_CACHE_SET_ID, SERVICE_NAME)
+    values (v.DOMAIN_GROUP_ID, v.DOMAIN_GROUP_NAME, v.START_DOMAIN_ID, v.END_DOMAIN_ID, null, v.SERVICE_NAME);
+
+merge into DOMAINGROUPASSIGNMENT t
+using
+(
+  select
+    {{ dg_properties.domain_group_id }} as DOMAIN_GROUP_ID
+  from dual
+) v
+on
+(
+  t.DOMAIN_GROUP_ID = v.DOMAIN_GROUP_ID
+)
+when matched then update set DOMAIN_GROUP_STATUS = 'A'
+when not matched then insert (DOMAIN_GROUP_ID, ASSIGNMENT_COUNT, CUSTOMER_COUNT, DOMAIN_GROUP_STATUS)
+values (v.DOMAIN_GROUP_ID, 0, 0, 'A');
+
+merge into REALTIMEROUTING t
+using
+(
+  select
+    {{ dg_properties.domain_group_id }} as DOMAIN_GROUP_ID,
+    0 as EVENT_CATEGORY_ID,
+    {{ dg_properties.rating_service_id }} as RATING_SERVICE_ID
+  from dual
+) v
+on
+(
+  t.DOMAIN_GROUP_ID = v.DOMAIN_GROUP_ID
+  and t.EVENT_CATEGORY_ID = v.EVENT_CATEGORY_ID
+)
+when matched then update set RATING_SERVICE_ID = v.RATING_SERVICE_ID
+when not matched then insert (DOMAIN_GROUP_ID,EVENT_CATEGORY_ID,RATING_SERVICE_ID) values (v.DOMAIN_GROUP_ID,v.EVENT_CATEGORY_ID,v.RATING_SERVICE_ID);
+
+{% endfor %}
+
+
+{% for service_name, domain_groups in DOMAIN_GROUPS_ASSIGNMENT.iteritems() %}
+DECLARE
+  dummy integer;
+BEGIN
+
+{% for domain_group in domain_groups %}
+  GNVCDSREPLICATION.createcds1nc(P_DOMAINGROUPID => {{ DOMAIN_GROUPS[domain_group.domain_group].domain_group_id }},
+                P_CACHEDATASETTYPEID => 1, -- customer:1, reference:2, lookup:3
+                P_SERVICENAME => '{{ service_name }}',
+                P_CACHEDATASETID => dummy);
+
+{% endfor %}
+  GNVCDSREPLICATION.createcds1nc(P_DOMAINGROUPID => NULL,
+                P_CACHEDATASETTYPEID => 2, -- customer:1, reference:2, lookup:3
+                P_SERVICENAME => '{{ service_name }}',
+                P_CACHEDATASETID => dummy);
+
+  GNVCDSREPLICATION.createcds1nc(P_DOMAINGROUPID => NULL,
+                P_CACHEDATASETTYPEID => 3, -- customer:1, reference:2, lookup:3
+                P_SERVICENAME => '{{ service_name }}',
+                P_CACHEDATASETID => dummy);
+
+{% if not domain_groups[0].is_active %}
+  update CACHEDATASET set CACHE_DATA_SET_CNTRL_STATE = 3 where SERVICE_NAME = '{{ service_name }}';
+{% else %}
+  update CACHEDATASET set CACHE_DATA_SET_CNTRL_STATE = 0 where SERVICE_NAME = '{{ service_name }}';
+{% endif %}
+
+END;
+/
+
+{% endfor %}
+
+update systemregistryentry set value = '{{ HA_ROOT }}/logs/event' where name = 'LogFileRootDir' and VALUE like '%event%';
+commit;
+
+declare
+      x varchar(200);
+      v_old_version number;
+      v_newVersion  number;
+             begin
+                  sysreg.writeVALUE_1('ipf_admin',
+                       '/Infinys/rbm/CIP/verifyDBWorkUnitTime',
+                        '120000',
+                          v_old_version,
+                          x,
+                          v_newVersion);
+
+ end;
+/
+
+commit;
+EXIT;

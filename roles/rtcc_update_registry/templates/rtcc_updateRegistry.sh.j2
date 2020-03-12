@@ -1,0 +1,87 @@
+#!/bin/bash
+
+{# WA for missed permissions for some scripts #}
+chmod +x $INFINYS_ROOT/RB/bin/*.sh
+chmod +x $INFINYS_ROOT/RB/bin/*.ksh
+
+{# addUDRUEventRouterEntry #}
+{% if groups["DDRS"] is defined and groups["DDRS"] | length %}
+set -x
+{% for host in groups['DDRS'] %}
+echo "[INFO] Executing addUDRUEventRouterEntry.ksh -n {{ loop.index }} -h {{ hostvars[host].rtcc_nodename }} -p '9011/cxf/QCMWebService'"
+addUDRUEventRouterEntry.ksh -n {{ loop.index }} -h {{ hostvars[host].rtcc_nodename }} -p "9011/cxf/QCMWebService"
+{% endfor %}
+set +x
+{% endif %}
+
+{# Configuring RTCC Cluster #}
+echo "[INFO] Executing AMQconfigGen -genbrokerclientconfig -xmlTemplate $INFINYS_ROOT/RB/bin/activemqTemplate_client.xml'"
+AMQconfigGen -genbrokerclientconfig -xmlTemplate $INFINYS_ROOT/RB/bin/activemqTemplate_client.xml
+
+{# Configuring SMART #}
+set -x
+{% if groups["CASSANDRA"] is defined and groups["CASSANDRA"] | length %}
+echo "[INFO] Executing updateRegistry.ksh - CassConfig link creation"
+{% for site_id in groups['CASSANDRA'] | map('extract', hostvars, ['site']) | list | unique %}
+{% for host in groups['CASSANDRA_S'+site_id|string] %}
+updateRegistry.ksh /Infinys/RB/SMART/CassConfig/Site{{ site_id }}/Host/Host{{ loop.index }} {{ hostvars[host].rtcc_nodename }}
+{% endfor %}
+{% endfor %}
+{% endif %}
+
+{% if groups["CASSANDRA"] is defined and groups["CASSANDRA"] | length %}
+{% for host in groups['CASSANDRA'] %}
+updateRegistry.ksh /Infinys/RB/SMART/CassConfig/Host/Host{{ loop.index }} {{ hostvars[host].rtcc_nodename }}
+{% endfor %}
+{% endif %}
+
+{# Configuration QCM #}
+{% if groups["QCM_API"] is defined and groups["QCM_API"] | length %}
+{% for host in groups['QCM_API'] %}
+updateRegistry.ksh /Infinys/RB/QCM/RestServiceConfig/Host/Host{{ loop.index }} {{ hostvars[host].rtcc_nodename }}
+{% endfor %}
+{% endif %}
+
+{# Configure RMP #}
+{% if groups['ZK'] is defined and groups["ZK"] | length %}
+{% for site_id in groups['ZK'] | map('extract', hostvars, ['site']) | list | unique %}
+updateRegistry.ksh /Infinys/rbm/RMP/SiteId{{ site_id }}/ZKconnectionList "{{ groups['ZK_S'+site_id|string] | map('extract', hostvars, 'rtcc_nodename') | list | join(':2181,') }}:2181"
+{% endfor %}
+{% endif %}
+
+{# Configure BCMP #}
+{% if groups["KAFKA_SMART"] is defined and groups["KAFKA_SMART"] | length %}
+{% for site_id in groups['KAFKA_SMART'] | map('extract', hostvars, ['site']) | list | unique %}
+updateRegistry.ksh /Infinys/rbm/BCMP/config/ConsumerHostname "{{ groups['KAFKA_SMART_S'+site_id|string] | map('extract', hostvars, 'rtcc_nodename') | list | join(',') }}"
+{% for group in ['CG1','CG2'] %}
+updateRegistry.ksh /Infinys/rbm/BCMP/config/ConsumerGroup/{{ group }}/ConsumerHostname "{{ groups['KAFKA_SMART_S'+site_id|string] | map('extract', hostvars, 'rtcc_nodename') | list | join(',') }}"
+updateRegistry.ksh /Infinys/rbm/BCMP/config/ConsumerGroup/{{ group }}/ConsumerPortnbr 9092
+{% endfor %}
+{% endfor %}
+{% endif %}
+
+{# Configure COLL #}
+{% if groups["RBM_COLL_SU"] is defined and groups["RBM_COLL_SU"] | length %}
+{% for site_id in groups['RBM_COLL_SU'] | map('extract', hostvars, ['site']) | list | unique %}
+{% for host in groups['RBM_COLL_SU_S'+site_id|string] %}
+updateRegistry.ksh /Infinys/rbm/COLL/Payload/SiteId{{ site_id }}/CollectorHost{{ loop.index }} {{ hostvars[host].rtcc_nodename }}
+
+{% endfor %}
+
+updateRegistry.ksh /Infinys/rbm/COLL/Payload/SiteId{{ site_id }}/PortNumberRTED {{ COLL.ports.rted }}
+updateRegistry.ksh /Infinys/rbm/COLL/Payload/SiteId{{ site_id }}/PortNumberOEL {{ COLL.ports.oel }}
+updateRegistry.ksh /Infinys/rbm/COLL/Payload/SiteId{{ site_id }}/PortNumberDBSTATS {{ COLL.ports.dbstats }}
+updateRegistry.ksh /Infinys/rbm/COLL/Payload/SiteId{{ site_id }}/PortNumberTMPISTATS {{ COLL.ports.tmpistats }}
+updateRegistry.ksh /Infinys/rbm/COLL/Payload/SiteId{{ site_id }}/ReconnectInterval {{ COLL.reconnect_interval }}
+{% endfor %}
+{% endif %}
+
+set +x
+
+{# Common Registry Config #}
+{% if COMMON_REGCONFIG is defined %}
+echo "[INFO] Executing updateRegistry.ksh"
+{% for entry in COMMON_REGCONFIG %}
+updateRegistry.ksh {{ entry.name }} {{ entry.value }}
+{% endfor %}
+{% endif %}

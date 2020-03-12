@@ -1,0 +1,188 @@
+---
+- name: Setup variables
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags: always
+  tasks:
+    - name: Include extra_vars files
+      include_vars:
+        dir: "{{ rtcc_extra_vars_dir }}"
+      no_log: true
+      when: rtcc_extra_vars_dir is defined
+
+- name: Update infinys.env file for Oracle Wallet
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: false
+  tags:
+    - install_cm_ui
+    - install_cm_core
+    - install_cm_patches
+  tasks:
+    - name: Set DATABASE and _JAVA_OPTIONS variables in infinys.env file to default format
+      block:
+        - name: Check that the infinys.env file exists
+          stat:
+            path: "{{ infinys_dir }}/infinys.env"
+          register: infinys_env
+
+        - block:
+            - name: Update DATABASE in infinys.env file
+              lineinfile:
+                dest: "{{ infinys_dir }}/infinys.env"
+                regexp: "^export DATABASE="
+                line: "export DATABASE=geneva_admin/{{ rb_logon_password }}@{{ be_oracle_service_name }}"
+                state: present
+                backrefs: yes
+
+            - name: Update _JAVA_OPTIONS in infinys.env file
+              lineinfile:
+                dest: "{{ infinys_dir }}/infinys.env"
+                regexp: "^export _JAVA_OPTIONS="
+                line: "export _JAVA_OPTIONS=\"-Djava.security.egd=file:///dev/urandom -Duser.timezone={{ timezone }}\""
+                state: present
+                backrefs: yes
+          when: infinys_env.stat.exists
+      when: rbm_oracle_wallet_enabled | default(false)
+
+- name: Import predefined variables
+  hosts: RBM_BE_CONFIG_NODE:RBM_BATCH_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: True
+  tags: always
+  roles:
+    - rbm_setup_vars
+
+- name: Stop Collection Management
+  hosts: RBM_BATCH_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_CPR_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_CPR_USER) }}"
+  tags:
+    - stop_cm_core
+    - reboot
+    - install_cm_core
+    - install_cm_patches
+    - install_cm_ui
+  run_once: True
+  tasks:
+    - include_role:
+        name: install_cm
+        tasks_from: cm_stop_server.yaml
+
+- name: Upload patch
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  tags:
+    - install_cm_ui
+    - install_cm_core
+    - install_cm_patches
+  gather_facts: False
+  roles:
+    - upload_patch
+
+- name: Install CM UI
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - install_cm_ui
+  tasks:
+    - include_role:
+        name: rbm_disable_triggers
+    - include_role:
+        name: install_cm
+        tasks_from: cm_ui_install.yaml
+    - include_role:
+        name: rbm_enable_triggers
+
+- name: Install CM Core
+  hosts: RBM_BATCH_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: false
+  tags:
+    - install_cm_core
+  tasks:
+    - include_role:
+        name: install_cm
+        tasks_from: cm_server_install.yaml
+
+- name: Install CM Core Patches
+  hosts: RBM_BATCH_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: false
+  tags:
+    - install_cm_patches
+  tasks:
+    - include_role:
+        name: install_cm
+        tasks_from: cm_server_patch_install.yaml
+
+- name: Start Collection Management
+  hosts: RBM_BATCH_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  run_once: True
+  tags:
+    - start_cm_core
+    - reboot
+    - install_cm_core
+    - install_cm_patches
+    - install_cm_ui
+  tasks:
+    - include_role:
+        name: install_cm
+        tasks_from: cm_start_server.yaml
+
+- name: Run post installation script
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - install_cm_ui
+    - install_cm_core
+    - install_cm_patches
+  tasks:
+    - name: Set DATABASE and _JAVA_OPTIONS variables in infinys.env file to Oracle Wallet format
+      block:
+        - name: Check that the infinys.env file exists
+          stat:
+            path: "{{ infinys_dir }}/infinys.env"
+          register: infinys_env
+
+        - block:
+            - name: Update DATABASE in infinys.env file
+              lineinfile:
+                dest: "{{ infinys_dir }}/infinys.env"
+                regexp: "^export DATABASE="
+                line: "export DATABASE=/@{{ be_oracle_service_name }}"
+                state: present
+                backrefs: yes
+
+            - name: Update _JAVA_OPTIONS in infinys.env file
+              lineinfile:
+                dest: "{{ infinys_dir }}/infinys.env"
+                regexp: "^export _JAVA_OPTIONS="
+                line: "export _JAVA_OPTIONS=\"-Djava.security.egd=file:///dev/urandom -Duser.timezone={{ timezone }}{{ ' -Doracle.net.tns_admin='~tns_admin if tns_admin is defined else '' }}{{ ' -Doracle.net.wallet_location='~rbm_oracle_wallet_location if rbm_oracle_wallet_enabled | default(false) else '' }}\""
+                state: present
+                backrefs: yes
+          when: infinys_env.stat.exists
+      when: rbm_oracle_wallet_enabled | default(false)

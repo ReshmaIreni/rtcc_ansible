@@ -1,0 +1,9 @@
+---
+- name: "Check PF"
+  stat:
+    path: "{{ infinys_dir }}/PF"
+  register: check_pf
+
+- name: "Set upgrade fact"
+  set_fact:
+    upgrade: check_pf.stat.exists

@@ -1,0 +1,153 @@
+{% for host in groups['RBM_BE_APP'] %}
+merge into rtcchost t
+using
+(
+  select
+    '{{ hostvars[host].rtcc_nodename }}' as HOST_NAME
+  from dual
+) v
+on
+(
+  t.HOST_NAME = v.HOST_NAME
+)
+when matched then update set OPERATING_SYSTEM_ID = 1, SITE_ID = {{ hostvars[host]['site'] }}, UNIT_ID = null
+when not matched then insert (HOST_NAME,OPERATING_SYSTEM_ID,SITE_ID,UNIT_ID)
+values (v.HOST_NAME,1,{{ hostvars[host]['site'] }},null);
+{% endfor %}
+
+{% for host in groups['RBM_FE_HA']  %}
+{% set outer_loop = loop %}
+merge into rtcchost t
+using
+(
+  select
+    '{{ hostvars[host].rtcc_nodename }}' as HOST_NAME
+  from dual
+) v
+on
+(
+  t.HOST_NAME = v.HOST_NAME
+)
+when matched then update set OPERATING_SYSTEM_ID = 1, SITE_ID = {{ hostvars[host]['site'] }}, UNIT_ID = null
+when not matched then insert (HOST_NAME,OPERATING_SYSTEM_ID,SITE_ID,UNIT_ID)
+values (v.HOST_NAME,1,{{ hostvars[host]['site'] }},null);
+
+{% for i in range( rtcc_rating_pool_amt ) %}
+--select * from ratingpool;
+merge into ratingpool t
+using
+(
+  select
+    '{{ loop.index0 * outer_loop.length + outer_loop.index }}' as RATING_POOL_ID
+  from dual
+) v
+on
+(
+  t.RATING_POOL_ID = v.RATING_POOL_ID
+)
+when matched then
+     update set
+          RATING_SERVICE_ID      = 0,
+          HOST_NAME              = '{{ hostvars[host].rtcc_nodename }}',
+          PORT_NUMBER            = {{ rtcc_rater_port|int + loop.index0 * 2 }},
+          PROCESS_COUNT          = {{ amfIgniteRaterSG.amfRaterCompCount }},
+          SCHEMA_VERSION         = '{{SCHEMA_VERSION}}',
+          MESSAGE_FORMAT_VERSION = replace( substr( '{{SCHEMA_VERSION}}', 3), '.', ''),
+          SITE_ID                = {{ hostvars[host]['site'] }})
+when not matched then
+     insert (RATING_POOL_ID,
+             RATING_SERVICE_ID,
+             HOST_NAME,PORT_NUMBER,
+             PROCESS_COUNT,
+             SCHEMA_VERSION,
+             MESSAGE_FORMAT_VERSION,
+             SITE_ID)
+     values (v.RATING_POOL_ID,
+             0,
+             '{{ hostvars[host].rtcc_nodename }}',
+             {{ rtcc_rater_port|int + loop.index0 * 2 }},
+             {{ amfIgniteRaterSG.amfRaterCompCount }},
+             '{{SCHEMA_VERSION}}',
+             replace( substr( '{{SCHEMA_VERSION}}', 3), '.', ''),
+             {{ hostvars[host]['site'] }});
+{% endfor %}
+
+--select * from ratinghost;
+merge into RATINGHOST t
+using
+(
+  select
+    '{{ hostvars[host].rtcc_nodename }}' as HOST_NAME
+  from dual
+) v
+on
+(
+  t.HOST_NAME = v.HOST_NAME
+)
+when matched then update set CACHE_DIR='/tmp',SHARED_CACHE_SET_ID=null,LOGICAL_HOST_NAME=v.HOST_NAME,RATING_HOST_BOO='T'
+when not matched then insert (HOST_NAME,CACHE_DIR,SHARED_CACHE_SET_ID,LOGICAL_HOST_NAME,RATING_HOST_BOO)
+values (v.HOST_NAME,'/tmp',null,v.HOST_NAME,'T');
+{% endfor %}
+
+commit;
+
+{% for host in groups['RBM_FE_DB'] %}
+{% for sn in hostvars[host]['oracle_service_name'] %}
+merge into cacheinstance t
+using
+(
+  select
+    '{{ sn }}' as SERVICE_NAME
+  from dual
+) v
+on
+(
+  t.SERVICE_NAME = v.SERVICE_NAME
+)
+when matched then update set SITE_ID = {{ hostvars[host]['site'] }}
+when not matched then insert (SERVICE_NAME, SCHEMA_VERSION, SEQUENCE_OFFSET, SITE_ID, SHORT_SERVICE_NAME)
+values ('{{ sn }}', '{{SCHEMA_VERSION}}', sequenceoffsetseq.nextval, {{ hostvars[host]['site'] }}, '{{ sn }}');
+{% endfor %}
+{% endfor %}
+
+commit;
+
+delete from RATINGSERVICE where RATING_SERVICE_NAME = 'RBM_RATE_SERVICE';
+
+merge into RATINGSERVICE t
+using
+(
+  select
+    0 as RATING_SERVICE_ID
+  from dual
+) v
+on
+(
+  t.RATING_SERVICE_ID = v.RATING_SERVICE_ID
+)
+when matched then update set RATING_SERVICE_NAME = 'RBM_RATE_SERVICE', RATING_SERVICE_TYPE = 0, RATING_SERVICE_DESC = null
+when not matched then insert (RATING_SERVICE_ID,RATING_SERVICE_NAME,RATING_SERVICE_TYPE,RATING_SERVICE_DESC)
+values (0,'RBM_RATE_SERVICE',0,null);
+
+update systemregistryentry set value = '{{ HA_ROOT }}/logs/event'
+where name = 'LogFileRootDir' and VALUE like '%event%';
+commit;
+
+
+{% for site_id in zk_sites %}
+merge into rtccsite t
+using
+(
+  select
+    {{site_id}} as SITE_ID
+  from dual
+) v
+on
+(
+  t.SITE_ID = v.SITE_ID
+)
+when matched then update set SITE_NAME='{{ site_id }}',SITE_DESC='Site{{ site_id }}'
+when not matched then insert (SITE_ID,SITE_NAME,SITE_DESC) values (v.SITE_ID,'{{ site_id }}','Site{{ site_id }}');
+commit;
+{% endfor %}
+EXIT;

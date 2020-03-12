@@ -1,0 +1,7 @@
+---
+# List of variables defined required paths on fe nodes
+preinstall_validate_paths:
+  - { path: "{{ opensaf_home }}", stop_if_not_exist: yes, note_for_error_message: "<opensaf_home>" }
+  - { path: "{{ zookeeper_home }}", stop_if_not_exist: no, note_for_error_message: "<zookeeper_home>" }
+  - { path: "{{ ignite_home }}", stop_if_not_exist: no, note_for_error_message: "<ignite_home>" }
+  - { path: "{{ ignite_proxy_home }}", stop_if_not_exist: no, note_for_error_message: "<ignite_proxy_home>" }

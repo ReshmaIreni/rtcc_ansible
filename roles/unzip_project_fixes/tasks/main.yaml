@@ -1,0 +1,20 @@
+---
+- name: Find Fixes zip
+  find:
+    paths: "{{ kits_dir }}"
+    pattern: ".*{{ CUSTOMER_NAME }}_fixes.*"
+    use_regex: true
+  register: fixes_zip
+
+- name: "Unzip fixes"
+  shell: |
+    unzip -o {{ kits_dir }}/{{ CUSTOMER_NAME }}_fixes.zip -d {{ infinys_dir }}
+    chmod +x {{ infinys_dir }}/RB_IU_Handler.ksh
+    chmod +x -R {{ infinys_dir }}/STAGE/RB/RB/bin
+    chmod +x -R {{ infinys_dir }}/RB/bin
+    chmod +x -R {{ infinys_dir }}/RBIUH
+  args:
+    chdir: "{{ infinys_dir }}"
+  when: (fixes_zip.files | length>0) and apply_fixes|default(false)
+  tags:
+    - skip_ansible_lint

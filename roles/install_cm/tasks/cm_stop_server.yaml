@@ -1,0 +1,22 @@
+---
+- block:
+    - name: Stopping Collection Management
+      shell: |
+        set -e
+        . ./environ.collect
+        cd $COLLECTENV
+        CM_dconfigadmin -H {{ nodename }}
+      args:
+        chdir: "/{{ cm_server_properties['install.base.dir'] }}/COLLECTIONS"
+      register: cm_status
+      ignore_errors: yes
+
+    - name: Collection Management stopping failed
+      fail:
+        msg: |
+          [Fail!] Collection Management has not been stopped.
+      ignore_errors: yes
+      when: cm_status.rc != 0
+
+    - debug: msg="[Success] Collection Management has stopped successfully!"
+      when: cm_status.rc == 0

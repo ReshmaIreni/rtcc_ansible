@@ -1,0 +1,11 @@
+---
+- name: Get shema version from release_info.xml file
+  xml:
+    path: "{{ infinys_dir }}/RB/bin/release_info.xml"
+    xpath: /RB/schema
+    content: 'attribute'
+  register: get_element_attribute
+
+- name: Set fact schema_version
+  set_fact:
+    SCHEMA_VERSION: "RB{{ get_element_attribute.matches[0]['schema']['release'] }}{{ get_element_attribute.matches[0]['schema']['letter'] }}"

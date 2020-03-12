@@ -1,0 +1,24 @@
+---
+# List of regular expressions to specify in which order custom patches should be executed
+# Patches will be ordered accordingly matches to each list element. Patches which are not
+# match to any element will be moved to the end of list.
+# For example:
+#   custom_fe_include_mask: "['RBM.*autoinstaller.zip','PIM']"
+custom_fe_include_mask: []
+
+# List of regular expressions to specify which custom patches should not be executed.
+# For example:
+# custom_fe_exclude_mask: "['WCAM']"
+custom_fe_exclude_mask: []
+
+# Specified custom patch regarding which should be install other custom patches
+custom_fe_patches_delimeter: ''
+
+# AutoInstaller arguments for custom patches.
+rbm_ai_custom_patches_args: ''
+
+# AutoInstaller arguments for core patches.
+rbm_ai_core_patches_args: ''
+
+# If need execute AutoInstaller with appropriate tasks on caches
+rtcc_ai_update_caches: false

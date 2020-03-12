@@ -1,0 +1,78 @@
+---
+dict_content:
+  - name: ECA
+    subdicts:
+      - value: ['username']
+      - value: ['password']
+  - name: CASSANDRA_SMART
+    subdicts:
+      - value: ['username']
+      - value: ['user_password']
+      - value: ['keyspace']
+      - value: ['cassandra_port']
+  - name: QCM_API
+    subdicts:
+      - value: ['port']
+      - value: ['username']
+      - value: ['password']
+  - name: UIM_API
+    subdicts:
+      - value: ['username']
+      - value: ['password']
+  - name: DOMAIN_GROUPS
+    subdicts:
+      - value: ['DG1', 'domain_group_id']
+      - value: ['DG1', 'start_domain_id']
+      - value: ['DG1', 'end_domain_id']
+      - value: ['DG1', 'service_name']
+      - value: ['DG1', 'rating_service_id']
+  - name: SNMP_AGENT
+    subdicts:
+      - value: ['is_enabled']
+      - value: ['send_traps_to', 'host']
+      - value: ['send_traps_to', 'port']
+
+content:
+  ## ENVIRONMENT
+  - activemq_cms_home
+  - activemq_home
+  - cloud_user
+  - ignite_env_file
+  - ignite_home
+  - ignite_proxy_home
+  - java_dir
+  - opensaf_home
+  - RBM_BE_GROUP
+  - RBM_BE_USER
+  - RBM_FE_GROUP
+  - RBM_FE_USER
+  - zookeeper_home
+  ## ORACLE
+  - characterset
+  - nls_lang
+  - oracle_home
+  - pf_audit_password
+  - pf_container_user_password
+  - pf_initial_user_password
+  - pf_ora_logon_password
+  - pf_sec_schema_password
+  - rb_logon_password
+  - sys_name
+  - sys_password
+  - unif_password
+  ## RTCC
+  - amfXMLfile
+  - cache_export_dir
+  - CLUSTER_NAME
+  - HA_ROOT
+  - prov_staging_home
+  - rtcc_staging_dir
+  ## AUTOINSTALLER
+  - CUSTOMER_NAME
+  ## RBM
+  - infinys_dir
+  - kits_dir
+  - rbm_license_dir
+  - rbm_be_hostname
+  ## ECA
+  - web_server_home

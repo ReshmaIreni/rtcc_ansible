@@ -1,0 +1,24 @@
+---
+- name: "{{ inventory_hostname }} : Get files from remote server"
+  fetch:
+    src: "{{ item.remote_file }}"
+    fail_on_missing: no
+    dest: "{{ fetched_dir }}/{{ application_name }}/{{ item.remote_file | basename }}"
+    flat: yes
+  with_items: "{{ template_files }}"
+  when: type != 'local'
+
+- name: "{{ inventory_hostname }} : Create directories for ethalons"
+  file:
+    path: "{{ ethalon_dir }}/{{ application_name }}/"
+    state: directory
+  with_items: "{{ template_files }}"
+  when: type == 'local'
+
+- name: "{{ inventory_hostname }} : Generate ethalons"
+  template:
+    src: "{{ item.template }}"
+    dest: "{{ ethalon_dir }}/{{ application_name }}/{{ item.remote_file | basename }}"
+  with_items: "{{ template_files }}"
+  ignore_errors: yes
+  when: type == 'local'

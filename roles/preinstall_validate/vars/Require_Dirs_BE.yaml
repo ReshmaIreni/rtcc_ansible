@@ -1,0 +1,4 @@
+---
+# List of variables defined required paths on be nodes
+preinstall_validate_paths:
+  - { path: "{{ web_server_home }}", stop_if_not_exist: "{% if web_server_type == 'none'%} no {% else %} yes {% endif %}", note_for_error_message: "<web_server_home>" }

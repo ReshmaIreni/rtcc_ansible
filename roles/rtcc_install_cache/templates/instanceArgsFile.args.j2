@@ -1,0 +1,8 @@
+INFINYS_PATH={{ infinys_dir }}
+DB_UTIL_PATH={{ infinys_dir }}/UTILITIES/Installation/dba_install
+{% for db_node in groups['RBM_FE_DB'] %}
+{% for sid in hostvars[db_node]['oracle_service_name'] %}
+{% set db_nodename=hostvars[db_node].rtcc_nodename %}
+{{ sys_name }} {{ sys_password }} {{ sid }} {{ sid }} {{ db_nodename }} {{ hostvars[db_node]['oracle_port'] }} RECYCLE
+{% endfor %}
+{% endfor %}

@@ -1,0 +1,55 @@
+---
+- name: Find RB staged directories
+  find:
+    paths: "{{ prov_staging_home }}"
+    file_type: directory
+    patterns: "RB-[0-9.]+(rc\\d+)?"
+    use_regex: yes
+    recurse: yes
+  register: rb_staged_releases
+
+- name: Set RB staged release version
+  set_fact:
+    rb_staged_release: "{{ rb_staged_releases.files | map(attribute='path') | list | version_sort | last | basename }}"
+
+- name: Start RBprovisionOLC.ksh -d -l
+  register: distrib
+  shell: |
+    source {{ infinys_dir }}/infinys.env
+    {{ infinys_dir }}/RB/bin/RBprovisionOLC.ksh -d -l "{{ CLUSTER_NAME }}_nodes"
+  args:
+    chdir: "{{ prov_staging_home }}/lX/clusterMgmt"
+  tags:
+    - skip_ansible_lint
+
+- debug:
+    msg: "{{ distrib.stdout }}"
+  when: not ansible_check_mode
+
+- name: Start RBprovisionOLC.ksh -i -l
+  register: provcluster
+  shell: |
+    source {{ infinys_dir }}/infinys.env
+    {{ infinys_dir }}/RB/bin/RBprovisionOLC.ksh -i -l "{{ CLUSTER_NAME }}_nodes" -v "{{ rb_staged_release }}"
+  args:
+    chdir: "{{ prov_staging_home }}/lX/clusterMgmt"
+  when: not rtcc_rolling_update
+  tags:
+    - skip_ansible_lint
+
+- name: Run Recycle Cluster tool for rolling update
+  shell: |
+    source ./infinys.env
+    {{ infinys_dir }}/RB/bin/RCLU{% for item in range(2) %} -N{{ loop.index }} {{ rtcc_linkage_update_list[item] }}{% endfor %} -c {{ CLUSTER_NAME }} -r {{ rb_staged_release }}
+  args:
+    chdir: "{{ infinys_dir }}"
+  register: rtcc_rolling_update_result
+  until: rtcc_rolling_update_result.rc == 0
+  retries: "{{ rtcc_rolling_update_retries }}"
+  delay: "{{ rtcc_rolling_update_delay }}"
+  when:
+    - rtcc_rolling_update
+    - rtcc_linkage_update_list is defined
+    - rtcc_linkage_update_list|length > 1
+  tags:
+    - skip_ansible_lint

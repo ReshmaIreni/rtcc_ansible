@@ -1,0 +1,32 @@
+---
+- name: "Check CM_SERVER file in {{ kits_dir }}"
+  tags:
+    - install_cm_core
+  find:
+    paths: "{{ kits_dir }}"
+    patterns: "{{ rbm_patterns.cm_server }}"
+    use_regex: yes
+  register: cm_server_found
+
+- name: Set CM_SERVER package
+  tags:
+    - install_cm_core
+  set_fact:
+    cm_server_pkg: "{{ cm_server_found.files | map(attribute='path') | list }}"
+
+- name: Install CM SERVER packages
+  include_role:
+    name: install_ai
+  tags:
+    - install_cm_core
+  vars:
+    install_ai_netcracker_home: "{{ infinys_dir }}"
+    install_ai_patch_path: "{{ item }}"
+    install_ai_config_files: ['config_CM_CORE.properties']
+    install_ai_predefined_properties:
+      install.base.dir: "{{ infinys_dir }}/collections_setup"
+      install.folder.name: "COLLECTIONS"
+      lang: "en_US.utf8"
+    install_ai_additional_properties: "{{ cm_server_properties | d({}) }}"
+  with_items: "{{ cm_server_pkg }}"
+

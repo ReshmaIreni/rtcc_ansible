@@ -1,0 +1,46 @@
+---
+# Extra arguments for install.sh script.
+# For example:
+#  install_ai_args: -skip_sqltest
+install_ai_args: ''
+
+# List of properties files. If patch contains 'etalon_config_###.properties' then
+# files names in list should be in format 'config_###.properties'.
+# For example:
+#   install_ai_config_files: "['config_RBM.properties', 'config_PF.properties']"
+install_ai_config_files: []
+
+# Dict for paramaters which should be updated in 'install_ai_config_files'.
+# Predefined parameters can be placed inside roles/playbooks.
+# For example:
+#    install_ai_predefined_properties:
+#      backend.oracle.database.host: "{{ rbm_be_db_host }}"
+#      backend.oracle.database.sid: "{{ oracle_db_sid }}"
+install_ai_predefined_properties: {}
+
+# Dict for paramaters which should be updated in 'install_ai_config_files'.
+# Additional parameters can be provided in any external configuration
+# (group_vars, extra vars, etc.). Additional properties has greater
+# precedence than predefined ones.
+# For example:
+#    install_ai_predefined_properties:
+#      backend.oracle.database.host: "{{ rbm_be_db_host }}-e"
+#      SMALL_TS: "SMALL"
+install_ai_additional_properties: {}
+
+# Set this parameter to 'true' if patch installation should happend even if
+# it is already installed.
+install_ai_force: false
+
+# By default AutoInstaller config files are updated only with changed parameters
+# (and never passwords). If need recreate the files from etalon set this
+# parameter to 'true'.
+install_ai_recreate_configs: false
+
+# Maximum runtime for AutoInstaller execution.
+# Default value - 7200 sec (2 hrs)
+install_ai_async: 7200
+
+# Specifies how frequently Ansible will poll AutoInstaller for status.
+# For 7200 async - each 30 seconds.
+install_ai_poll: 30

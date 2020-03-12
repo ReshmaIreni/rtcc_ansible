@@ -1,0 +1,41 @@
+---
+- name: Upload ECA package
+  include_role:
+    name: upload_patch
+    tasks_from: single_patches
+  vars:
+    components_list: "{{ rbm_components.product }}"
+    component_name: 'ECA'
+    pattern: "{{ rbm_patterns.eca }}"
+  when: rbm_components is defined
+
+- name: "Check ECA file in {{ kits_dir }}"
+  find:
+    paths: "{{ kits_dir }}"
+    patterns: "{{ rbm_patterns.eca }}"
+    use_regex: yes
+  register: eca_found
+  when: rbm_components is undefined
+
+- name: Set ECA package
+  set_fact:
+    eca_pkg: |
+      {% if rbm_components is defined -%}
+      {{ [match] | map('regex_replace', '(.*)', '{{ kits_dir }}/\1') | list if match | length else [] }}
+      {%- else -%}
+      {{ eca_found.files | map(attribute='path') | list }}
+      {%- endif %}
+
+- name: Install ECA
+  include_role:
+    name: install_ai
+  vars:
+    install_ai_netcracker_home: "{{ infinys_dir }}"
+    install_ai_patch_path: "{{ item }}"
+    install_ai_args: "-skip_sqltest"
+    install_ai_config_files: ['config_ECA.properties']
+    install_ai_predefined_properties:
+      ecaUser: "{{ ECA.username }}"
+      ecaPassword: "{{ ECA.password }}"
+    install_ai_additional_properties: "{{ eca_properties }}"
+  with_items: "{{ eca_pkg }}"

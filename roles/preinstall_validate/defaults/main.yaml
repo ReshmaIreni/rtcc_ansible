@@ -1,0 +1,19 @@
+---
+# need for a preliminary check
+preinstall_validate_need: false
+
+var_file_with_dirs_for_nodes: 'defaults_list_dir.yaml'
+
+# List of variables defined required paths on all nodes
+preinstall_validate_paths: []
+
+# Minimum free space required for proper installation.
+minimum_free_space: "100M"
+
+# By default, when the free space is less than indicated, the installation will be aborted.
+# When there is not enough free space:
+#   - if 'true' is specified, the installation will fail;
+#   - if 'false' is specified, a warning will be displayed.
+check_free_space_fail_on_error: true
+
+use_sysdba: true

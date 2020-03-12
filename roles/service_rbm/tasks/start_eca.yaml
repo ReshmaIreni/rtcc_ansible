@@ -1,0 +1,49 @@
+---
+- name: "ECA Status Check"
+  no_log: yes
+  wait_for:
+    host: "{{ web_server_host }}"
+    port: "{{ web_server_port }}"
+    state: started
+    sleep: 5
+    delay: 5
+    timeout: 150
+    msg: "this is stopped"
+  ignore_errors: yes
+  register: check_started
+
+- name: "Info message"
+  debug:
+    msg: "ECA admin server has already been launched on {{ web_server_port }} port"
+  when:
+    - not check_started.failed
+
+- block:
+    - name: "Execute infinysctl to start ECA admin server"
+      shell: |
+        cd {{ infinys_dir }}
+        source {{ infinys_dir }}/infinys.env
+        infinysctl start
+      environment:
+        PF_USER_PASSWORD: "{{ unif_password }}"
+        INF_SCHEMA_PASSWORD: "{{ inf_user_password }}"
+        PF_SCHEMA_PASSWORD: "{{ pf_schema_password }}"
+        PF_SEC_SCHEMA_PASSWORD: "{{ pf_sec_schema_password }}"
+      tags:
+        - skip_ansible_lint
+
+    - name: "Wait for port {{ web_server_port }}"
+      wait_for:
+        host: "{{ web_server_host }}"
+        port: "{{ web_server_port }}"
+        state: started
+        sleep: 10
+        delay: 30
+        timeout: 300
+        msg: "Failed to start ECA on {{ web_server_port }} port"
+
+    - name: "Info message"
+      debug:
+        msg: "ECA launched on {{ web_server_port }} port"
+  when:
+    - check_started.failed

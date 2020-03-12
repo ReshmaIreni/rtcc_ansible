@@ -1,0 +1,5 @@
+---
+getter_format_output: 'to_column'
+get_params:
+  - { component: "gparams", sql_select: "select trim(chr(34)||name||chr(34)||': '||chr(34)||case when type = 'STRING' then string_value when type = 'INTEGER' then TO_CHAR(integer_value) end||chr(34)) as param_from_db from gparams" }
+application_name: rtcc

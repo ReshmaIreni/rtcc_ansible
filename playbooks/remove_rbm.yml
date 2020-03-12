@@ -1,0 +1,38 @@
+---
+- name: Disconnecting active sessions on hosts {{ groups['RBM_BE_DB'] }}
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tasks:
+    - include_role:
+        name: service_rbm
+        tasks_from: cleanup_disconnect_active_sessions.yaml
+      vars:
+        cleanup_disconnect_active_sessions_host_list: "{{ groups['RBM_BE_DB'] }}"
+
+- name: Cleaning up RBM BE database on hosts {{ groups['RBM_BE_DB'] }}
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tasks:
+    - include_role:
+        name: service_rbm
+        tasks_from: cleanup_rbm_database.yaml
+      vars:
+        cleanup_rbm_database_host_list: "{{ groups['RBM_BE_DB'] }}"
+
+- name: Cleaning {{ infinys_dir }} up on hosts {{ groups['RBM_BE_CONFIG_NODE'] }}
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tasks:
+    - name: Cleaning {{ infinys_dir }} up
+      shell: "rm -rf {{ infinys_dir }}/*"
+      tags:
+        - skip_ansible_lint

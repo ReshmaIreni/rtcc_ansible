@@ -1,0 +1,61 @@
+---
+- name: Check that the infinys.env file exists
+  stat:
+    path: "{{ infinys_dir }}/infinys.env"
+  register: infinys_env
+
+- name: Create infinys_root_scripts directory
+  file:
+    path: "{{ infinys_dir }}/scripts"
+    state: directory
+    owner: "{{ RBM_BE_USER }}"
+    group: "{{ RBM_BE_GROUP }}"
+    mode: 0764
+  when: infinys_env.stat.exists
+
+- name: Copy enable_core_triggers.sql
+  template:
+    src: "enable_core_triggers.sql.j2"
+    dest: "{{ infinys_dir }}/scripts/enable_core_triggers.sql"
+  when: infinys_env.stat.exists
+
+- name: Enable core triggers (Execute sql file)
+  shell: |
+    source ./infinys.env
+    sqlplus -s geneva_admin/$rbm_rb_logon_password@{{ be_oracle_service_name }} @scripts/enable_core_triggers.sql
+  args:
+    chdir: "{{ infinys_dir }}"
+  environment:
+    rbm_rb_logon_password: "{{ rb_logon_password }}"
+  when: infinys_env.stat.exists
+  register: enable_core_triggers
+
+- debug:
+    msg: "{{ enable_core_triggers.stdout }}"
+  when: not ansible_check_mode and infinys_env.stat.exists
+
+- name: Check that the config_RBM.CST.properties file exists
+  stat:
+    path: "{{ infinys_dir }}/AutoInstaller/config_RBM.CST.properties"
+  register: rbm_cst_config
+
+- name: "Copy enable custom triggers script"
+  template:
+    src: enable_custom_triggers.sql.j2
+    dest: "{{ infinys_dir }}/scripts/enable_custom_triggers.sql"
+  when: rbm_cst_config.stat.exists and infinys_env.stat.exists
+
+- name: "Enable custom triggers in case of Upgrade"
+  shell: |
+    source ./infinys.env
+    sqlplus -s geneva_admin/$rbm_rb_logon_password@{{ be_oracle_service_name }} @scripts/enable_custom_triggers.sql
+  args:
+    chdir: "{{ infinys_dir }}"
+  environment:
+    rbm_rb_logon_password: "{{ rb_logon_password }}"
+  when: rbm_cst_config.stat.exists and infinys_env.stat.exists
+  register: enable_custom_triggers
+
+- debug:
+    msg: "{{ enable_custom_triggers.stdout }}"
+  when: not ansible_check_mode and rbm_cst_config.stat.exists and infinys_env.stat.exists

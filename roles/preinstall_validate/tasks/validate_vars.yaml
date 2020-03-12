@@ -1,0 +1,33 @@
+---
+- name: variables
+  include_vars: "{{ list }}"
+
+- name: "Create variables and dictionaries list"
+  set_fact:
+    variables_list: |-
+      {%- set tmp_list = [] -%}
+      {%- for var_param in content  -%}
+      {%-   if var_param in vars  -%}
+      {{      tmp_list.append({ 'variable_name': var_param, 'status': 'DEFINED' }) }}
+      {%-   else  -%}
+      {{      tmp_list.append({ 'variable_name': var_param, 'status': 'FAILED' }) }}
+      {%-   endif  -%}
+      {%- endfor -%}
+      {%- for item_dict in dict_content -%}
+      {%-   if item_dict.name in vars -%}
+      {%-     for item_subdict in item_dict.subdicts -%}
+      {%-        if ([item_dict.name] | map('extract', vars, item_subdict.value) | list)[0] is defined -%}
+      {{          tmp_list.append( {'dictionary_name': "%s['%s']"|format(item_dict.name, item_subdict.value | join("']['")), 'status': 'DEFINED'}) }}
+      {%-        else  -%}
+      {{          tmp_list.append( {'dictionary_name': "%s['%s']"|format(item_dict.name, item_subdict.value | join("']['")), 'status': 'FAILED'}) }}
+      {%-        endif -%}
+      {%-     endfor -%}
+      {%-   endif -%}
+      {%- endfor -%}
+      {{  tmp_list  }}
+
+- name: Stop processing via "fail" if any variable does not exist
+  fail:
+    msg: "{{ variables_list | selectattr('status', 'match', 'FAILED') | list }}"
+  when: variables_list | selectattr('status', 'match', 'FAILED') | list | length > 0
+

@@ -1,0 +1,23 @@
+---
+- name: "Check CM_UI file in {{ kits_dir }}"
+  find:
+    paths: "{{ kits_dir }}"
+    patterns: "{{ rbm_patterns.cm_ui }}"
+    use_regex: yes
+  register: cm_ui_found
+
+- name: Set CM_UI package
+  set_fact:
+    cm_ui_pkg: "{{ cm_ui_found.files | map(attribute='path') | list }}"
+
+- name: Install CM UI packages
+  include_role:
+    name: install_ai
+  vars:
+    install_ai_netcracker_home: "{{ infinys_dir }}"
+    install_ai_patch_path: "{{ item }}"
+    install_ai_config_files: ['config_CM_UI.properties', 'config_EBOS_UI.properties']
+    install_ai_predefined_properties:
+      environment.type: "DVLP"
+    install_ai_additional_properties: "{{ cm_ui_properties | d({}) }}"
+  with_items: "{{ cm_ui_pkg }}"

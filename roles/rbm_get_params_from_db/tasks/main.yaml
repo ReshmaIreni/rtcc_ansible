@@ -1,0 +1,59 @@
+---
+# Get parameter values from db and put parameter list with values in file
+#
+# Using var_file - db_params_descriptions.yaml contains to scripts list which select values parameters.
+#
+#     var_file contain list variable named "get_params" with structure
+#          - { component: "COMPONENT1",    sql_select: "select paramname_field||': '||paramvalue_field  as param_from_db from <table1_with_params> where <condition if required>" }
+#          - { component: "COMPONENT2",    sql_select: "select paramname_field||': '||paramvalue_field  as param_from_db from <table2_with_params> where <condition if required>" }
+#
+#     IMPORTANT: note that the query "sql_select" must return a values of varchar2 type and named "param_from_db"
+#
+# Using variables : "getter_target_path" contains path to output file with result of selects. By default "getter_target_path": {{ infinys_dir }}
+#                 : "getter_format_output"  variable takes values 'to_column' or 'to_string' or 'to_json'. By default "format_output": 'to_json'
+#
+# Result file name "{{ target_path }}/result_{{component}}.<datetime now>.out
+#
+# if getter_format_output = 'to_string' then structure output is "<param_from_db[1]>, <param_from_db[2]>, <param_from_db[3]> ..."
+# if getter_format_output = 'to_column' then structure output is
+#   <param_from_db[1]>
+#   <param_from_db[2]>
+#   <param_from_db[3]>
+#   ...
+# if getter_format_output = 'to_json'  then structure output is {<param_from_db[1]>, <param_from_db[2]>, <param_from_db[3]> ...}
+#
+#
+# Example of Role call:
+#   Need to create <var_file> with required structure and set variables "target_path" and "format_output" into this var file
+#
+#    - name: Get values params of RBM
+#      hosts: ADMIN_DB
+#      remote_user: GET_USER
+#      gather_facts: true
+#      roles:
+#        - {role: get_params_from_db, var_file_with_params_description: '<var_file>' }
+#
+
+- name: include_variables with db params descriptions
+  include_vars: "{{ var_file_with_params_description }}"
+
+- include_tasks: get_params_value.yaml
+  vars:
+    component: "{{ item.component }}"
+    sql_command: "select listagg(param_from_db, ', ') within group (order by param_from_db) as param_from_db from ({{ item.sql_select }})"
+  with_items: "{{ get_params }}"
+  when: getter_format_output=='to_string'
+
+- include_tasks: get_params_value.yaml
+  vars:
+    component: "{{ item.component }}"
+    sql_command: "select '{'||(select listagg(param_from_db, ', ') within group (order by param_from_db) as param_from_db from ({{ item.sql_select }}))||'}' from dual"
+  with_items: "{{ get_params }}"
+  when: getter_format_output=='to_json'
+
+- include_tasks: get_params_value.yaml
+  vars:
+    component: "{{ item.component }}"
+    sql_command: "{{ item.sql_select }}"
+  with_items: "{{ get_params }}"
+  when: getter_format_output=='to_column'

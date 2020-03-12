@@ -1,0 +1,11 @@
+---
+- name: create logrotate config for rtcc
+  template:
+    src: "rtcc.conf.j2"
+    dest: "/etc/logrotate.d/rtcc.conf"
+    owner: root
+    group: root
+    mode: 0644
+
+- name: enable logrotate hourly
+  command: mv /etc/cron.daily/logrotate /etc/cron.hourly/ creates=/etc/cron.hourly/logrotate

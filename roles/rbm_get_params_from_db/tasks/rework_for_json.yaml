@@ -1,0 +1,14 @@
+---
+- name: initialize result variable
+  set_fact:
+    version: {}
+
+- name: set fact to combine result
+  set_fact:
+    version: "{{ version | default({}) | combine( { component: { inventory_hostname: getter_component_version }} ) }}"
+
+- name: create getter result file
+  copy:
+    dest: "{{ getter_result_filename }}"
+    content: |
+       {{ version | to_nice_json }}

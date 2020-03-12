@@ -1,0 +1,34 @@
+---
+- name: "Info message"
+  hosts: RBM_BE_CONFIG_NODE
+  remote_user: "{{ cloud_user }}"
+  gather_facts: False
+  tasks:
+    - debug:
+        msg: "[WARNING] mount_nfs.yml playbook as deprecated."
+
+- name: Prepare NFS app
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(cloud_user) }}"
+  become_user: "{{ rbm_become_user | default(cloud_user) }}"
+  gather_facts: False
+  tags:
+    - nfs
+  tasks:
+    - include_role:
+        name: service_rtcc
+        tasks_from: rtcc_nfs_conf.yaml
+
+- name: Prepare NFS db
+  hosts: "RBM_FE_HA:!RBM_BE_CONFIG_NODE {{':RBM_BE_DB:RBM_FE_DB' if (mount_db_hosts|default(false)) else ''}}"
+  become: true
+  remote_user: "{{ rbm_remote_user | default(cloud_user) }}"
+  become_user: "{{ rbm_become_user | default(cloud_user) }}"
+  gather_facts: False
+  tags:
+    - nfs
+  tasks:
+    - include_role:
+        name: service_rtcc
+        tasks_from: rtcc_mount_nfs.yaml

@@ -1,0 +1,65 @@
+---
+- name: Upload Utilities package
+  include_role:
+    name: upload_patch
+    tasks_from: single_patches
+  vars:
+    components_list: "{{ rbm_components.product }}"
+    component_name: "Utilities"
+    pattern: "{{ rbm_patterns.utilities }}"
+  when: rbm_components is defined
+
+- name: "Check Utilities file in {{ kits_dir }}"
+  find:
+    paths: "{{ kits_dir }}"
+    patterns: "{{ rbm_patterns.utilities }}"
+    use_regex: yes
+  register: utilities_found
+  when: rbm_components is undefined
+
+- name: Set Utilities package
+  set_fact:
+    utilities_pkg: |
+      {% if rbm_components is defined -%}
+      {{ [match] | map('regex_replace', '(.*)', '{{ kits_dir }}/\1') | list if match | length else [] }}
+      {%- else -%}
+      {{ utilities_found.files | map(attribute='path') | list }}
+      {%- endif %}
+
+- name: Install Utilities
+  include_role:
+    name: install_ai
+  vars:
+    install_ai_netcracker_home: "{{ infinys_dir }}"
+    install_ai_patch_path: "{{ item }}"
+    install_ai_args: "-skip_sqltest"
+    install_ai_config_files: ['config_RBM.properties']
+    install_ai_predefined_properties:
+      backend.oracle.database.host: "{{ rbm_be_db_host }}"
+      backend.oracle.database.globalName: "{{ oracle_db_sid }}"
+      backend.oracle.database.sid: "{{ oracle_db_sid }}"
+      backend.oracle.database.twoTask: "{{ TWO_TASK }}"
+      backend.oracle.database.listenerPort: "{{ oracle_port }}"
+      backend.oracle.database.CVG_INFINYS_PF: "{{ cvg_infinys_pf }}"
+      backend.oracle.database.oracleUnixUser: "{{ oracle_user }}"
+      rb_ora_logon_password: "{{ rb_logon_password }}"
+      inf_password: "{{ inf_user_password }}"
+      unif_password: "{{ unif_password }}"
+      backend.directories.java_home: "{{ java_dir }}"
+      backend.directories.oracle_home: "{{ oracle_home }}"
+      backend.directories.cvg_license.dir: "{{ rbm_license_dir }}"
+      backend.directories.cvg_license.file: "{{ rbm_license_file_name }}"
+      backend.directories.cvg_license.cert: "{{ rbm_license_certificate_file }}"
+      backend.webServer.container: "{{ web_server_type }}"
+      backend.webServer.home: "{{ web_server_home }}"
+      backend.webServer.domainDir: "{{ domain_root }}"
+      backend.webServer.host: "{{ web_server_host }}"
+      backend.webServer.port: "{{ web_server_port }}"
+      backend.webServer.domainName: "{{ rbm_name }}"
+      schemaUpgrade.SkipY9SchemaReport: "{{ skipY9report | default('yes') }}"
+      ora_sys_user: "{{ sys_name }}"
+      ora_sys_role_sysadm: "{{ use_sysdba }}"
+      ora_sys_password: "{{ sys_password }}"
+      backend.oracle.database.usersDefaultTableSpace: "{{ merge_oracle_tablespaces.users }}"
+    install_ai_additional_properties: "{{ utilities_properties }}"
+  with_items: "{{ utilities_pkg }}"

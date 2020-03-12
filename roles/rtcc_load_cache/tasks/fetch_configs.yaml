@@ -1,0 +1,7 @@
+---
+- name: Begin fetching
+  vars:
+    var_file_with_params_description: query_params.yaml
+  include_role:
+    name: rbm_get_params_from_db
+  when: type != 'local'

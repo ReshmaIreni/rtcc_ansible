@@ -1,0 +1,94 @@
+---
+- name: "Removing {{ kits_dir }}"
+  file:
+    path: "{{ kits_dir }}/"
+    state: absent
+
+- name: "Creating {{ kits_dir }}"
+  file:
+    path: "{{ kits_dir }}"
+    state: directory
+    owner: "{{ RBM_BE_USER }}"
+    group: "{{ RBM_BE_GROUP }}"
+    mode: "u+rwx"
+
+- name: "Find {{ kits_file }} package in local"
+  delegate_to: localhost
+  become: false
+  stat:
+    path: "{{ playbook_dir }}/../kits/{{ kits_file }}"
+  register: kits_file_check
+
+- name: "Unarchiving file {{ kits_file }} to {{ kits_dir }}"
+  unarchive:
+    src: "{{ playbook_dir }}/../kits/{{ kits_file }}"
+    dest: "{{ kits_dir }}"
+    owner: "{{ RBM_BE_USER }}"
+    group: "{{ RBM_BE_GROUP }}"
+    mode: 0755
+  when: kits_file_check.stat.exists
+
+- name: Moving RB delta patches
+  shell: |
+    PATCHES=$(ls | grep "RB-.*_delta_autoinstaller.zip")
+    if [[ -n $PATCHES ]]
+    then
+      mkdir delta
+      for patch in $PATCHES
+      do
+        mv $patch delta
+      done
+    fi
+  args:
+    chdir: "{{ kits_dir }}"
+  tags:
+    - skip_ansible_lint
+
+- name: "Check UTILITIES file in {{ kits_dir }}"
+  find:
+    paths: "{{ kits_dir }}"
+    patterns: "UTILITIES_[0-9.]+.zip"
+    use_regex: yes
+  register: ut_pkg
+
+- name: Moving kits
+  when: ut_pkg is defined and (ut_pkg.files|length>0)
+  shell: |
+    mkdir -p AI
+    RB_NAME1=$(ls -t {{ kits_dir }} | grep "RB-" | head -1)
+    RB_NAME2=$(echo "$RB_NAME1" | sed -E "s/(RB-[0-9.]+[^.]+).+/\1.zip/")
+    mv $RB_NAME1 $RB_NAME2
+    ECA_NAME1=$(ls -t {{ kits_dir }} | grep "ECA-" | head -1)
+    if [[ -n $ECA_NAME1 ]]
+    then
+        ECA_NAME2=$(echo "$ECA_NAME1" | sed -E "s/(.*64\.)([^.]*).*/\1\2.zip/")
+        mv $ECA_NAME1 $ECA_NAME2
+    fi
+    RBTEST_NAME1=$(ls -t {{ kits_dir }} | grep "rbtest-" | head -1)
+    if [[ -n $RBTEST_NAME1 ]]
+    then
+        RBTEST_NAME2=$(echo "$RBTEST_NAME1" |  sed -E "s/(rbtest-[0-9.]+).*/\1zip/")
+        mv $RBTEST_NAME1 $RBTEST_NAME2
+    fi
+    AI_SETUP=$(ls -t {{ kits_dir }} | grep "AutoInstaller" | head -1)
+    mv {{ kits_dir }}/$AI_SETUP {{ kits_dir }}/AI/$AI_SETUP
+    for AI_FILE in $(ls {{ kits_dir }} | grep "_autoinstaller"); do
+        mv {{ kits_dir }}/$AI_FILE {{ kits_dir }}/AI/$AI_FILE
+    done
+  args:
+    chdir: "{{ kits_dir }}"
+  tags:
+    - skip_ansible_lint
+
+- name: Create RBM directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ RBM_BE_USER }}"
+    group: "{{ RBM_BE_GROUP }}"
+    mode: "u+rwx"
+  with_items:
+    - '{{ rbm_root_dir }}/infinys_root'
+    - '{{ rbm_root_dir }}/scripts'
+    - '{{ rbm_root_dir }}/work'
+    - '{{ rbm_root_dir }}/archive'

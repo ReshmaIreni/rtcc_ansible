@@ -1,0 +1,57 @@
+---
+- name: set fact result filename without path
+  set_fact:
+    getter_filename: "result_{{ component }}.{{ ansible_date_time.iso8601_basic }}.out"
+  when: getter_format_output != 'to_json'
+
+- name: set fact result filename without path
+  set_fact:
+    getter_filename: "{{ component }}_versions.json"
+  when: getter_format_output == 'to_json'
+
+- name: set fact getter_result_filename
+  set_fact:
+    getter_result_filename: "{{ infinys_dir }}/scripts/{{ getter_filename }}"
+
+- name: Copying template script for get params from db
+  template:
+    src: "getter_temporary_script.sql.j2"
+    dest: "{{ infinys_dir }}/scripts/getter_temporary_script.sql"
+    mode: 0664
+
+- name: Execute temporary sql script to get parameter value
+  shell: |
+    source ./infinys.env
+    sqlplus -s geneva_admin/$rbm_rb_logon_password@{{ be_oracle_service_name }}@ scripts/getter_temporary_script.sql
+  args:
+    chdir: "{{ infinys_dir }}"
+  environment:
+    rbm_rb_logon_password: "{{ rb_logon_password }}"
+  changed_when: false
+  register: getter_result_rows
+
+- include_tasks: rework_for_json.yaml
+  vars:
+    getter_component_version: "{{ getter_result_rows.stdout_lines[0] }}"
+  when: getter_format_output=='to_json'
+
+- name: remove temporary sql script
+  file:
+    state: absent
+    path: "{{ infinys_dir }}/scripts/getter_temporary_script.sql"
+
+- name: Fetch result file
+  fetch:
+    src: "{{ getter_result_filename }}"
+    dest: "{{ getter_target_path }}/"
+    flat: yes
+
+- name: remove result file on remote host
+  file:
+    state: absent
+    path: "{{ getter_result_filename }}"
+
+- name: Display message
+  debug:
+    msg: "File with results is {{ getter_target_path }}/{{ getter_filename }}"
+  when: not ansible_check_mode

@@ -1,0 +1,67 @@
+---
+- name: "Prevent run without tags"
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: "Display help message"
+      fail:
+        msg: "You must run this playbook with tags!"
+
+- name: "Call rtcc_nfs_conf"
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ third_party_remote_user | default('root') }}"
+  gather_facts: False
+  tags: rtcc_nfs_conf
+  tasks:
+    - include_role:
+        name: service_rtcc
+        tasks_from: rtcc_nfs_conf.yaml
+
+- name: "Call rtcc_mount_nfs on the HA host"
+  hosts: RBM_FE_HA:!RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ third_party_remote_user | default('root') }}"
+  gather_facts: False
+  tags: rtcc_mount_nfs_ha
+  tasks:
+    - include_role:
+        name: service_rtcc
+        tasks_from: rtcc_mount_nfs.yaml
+
+- name: "Call rtcc_mount_nfs on the DB hosts"
+  hosts: RBM_BE_DB:RBM_FE_DB
+  become: true
+  remote_user: "{{ third_party_remote_user | default('root') }}"
+  gather_facts: False
+  tags: rtcc_mount_nfs_db
+  tasks:
+    - include_role:
+        name: service_rtcc
+        tasks_from: rtcc_mount_nfs.yaml
+
+- name: "Call rtcc_logrotate"
+  hosts: RBM_FE_HA
+  become: true
+  remote_user: "{{ third_party_remote_user | default('root') }}"
+  gather_facts: False
+  tags: rtcc_logrotate
+  tasks:
+    - include_role:
+        name: service_rtcc
+        tasks_from: rtcc_logrotate.yaml
+
+- name: "Call cleanup_disconnect_active_sessions"
+  hosts: CLUSTER_CONFIG_NODE
+  become: true
+  remote_user: "{{ rtcc_remote_user | default(RBM_FE_USER) }}"
+  become_user: "{{ rtcc_become_user | default(RBM_FE_USER) }}"
+  gather_facts: False
+  tags: cleanup_disconnect_active_sessions
+  tasks:
+    - include_role:
+        name: service_rbm
+        tasks_from: cleanup_disconnect_active_sessions.yaml
+      vars:
+        cleanup_disconnect_active_sessions_host_list: "{{ groups['RBM_FE_DB'] }}"
+        cleanup_disconnect_active_sessions_file_dest_dir: "{{ HA_ROOT }}/scripts"

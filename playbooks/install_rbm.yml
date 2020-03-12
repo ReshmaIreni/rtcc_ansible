@@ -1,0 +1,295 @@
+---
+########################
+# This task deprecated #
+########################
+- name: Setup variables
+  hosts: RBM_BE_CONFIG_NODE:RBM_FE_HA:RBM_FE_DB
+  gather_facts: False
+  tags: always
+  tasks:
+    - name: Set rtcc_nodename for all hosts
+      set_fact:
+        rtcc_nodename: "{{ ocs_network[chosen_network.network_rtcc | d(chosen_network.network_default)].hostname |
+                          d(ocs_network[chosen_network.network_rtcc | d(chosen_network.network_default)].nodename) }}"
+      when:
+        - rtcc_patch is defined
+        - rtcc_patch | bool
+
+    - name: Include extra_vars files
+      include_vars:
+        dir: "{{ rtcc_extra_vars_dir }}"
+      no_log: true
+      when: rtcc_extra_vars_dir is defined
+
+- name: Update infinys.env file for Oracle Wallet
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: false
+  tags: always
+  tasks:
+    - name: Set DATABASE and _JAVA_OPTIONS variables in infinys.env file to default format
+      block:
+        - name: Check that the infinys.env file exists
+          stat:
+            path: "{{ infinys_dir }}/infinys.env"
+          register: infinys_env
+
+        - block:
+            - name: Update DATABASE in infinys.env file
+              lineinfile:
+                dest: "{{ infinys_dir }}/infinys.env"
+                regexp: "^export DATABASE="
+                line: "export DATABASE=geneva_admin/{{ rb_logon_password }}@{{ be_oracle_service_name }}"
+                state: present
+                backrefs: yes
+
+            - name: Update _JAVA_OPTIONS in infinys.env file
+              lineinfile:
+                dest: "{{ infinys_dir }}/infinys.env"
+                regexp: "^export _JAVA_OPTIONS="
+                line: "export _JAVA_OPTIONS=\"-Djava.security.egd=file:///dev/urandom -Duser.timezone={{ timezone }}\""
+                state: present
+                backrefs: yes
+          when: infinys_env.stat.exists
+      when: rbm_oracle_wallet_enabled | default(false)
+
+- name: Preinstall validate. Check defined directories on nodes of BE groups
+  hosts: RBM_BE_APP
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: false
+  tags: always
+  roles:
+    - preinstall_validate
+  vars:
+    list: 'rbm_vars.yml'
+    var_file_with_dirs_for_nodes: 'Require_Dirs_All.yml'
+    preinstall_validate_ts_host_list: "{{ groups['RBM_BE_DB'] }}"
+    preinstall_validate_ts_sql_script_dest_path: "{{ infinys_dir }}/scripts"
+    preinstall_validate_etalon_tablespaces: "{{ oracle_be_tablespaces_size | d({}) }}"
+
+- name: Preinstall
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: True
+  tags: always
+  roles:
+    - rbm_check_upgrade
+    - rbm_setup_vars
+
+- name: Upload patch
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags: upload
+  roles:
+    - upload_patch
+
+- name: Pre Installation Steps (RBM_BE_APP)
+  hosts: RBM_BE_APP
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - rbm_batch_pre_install
+  tasks:
+    - name: Include custom roles
+      include_role:
+        name: "{{ item }}"
+      with_items: "{{ rbm_be_app_pre_custom_roles | d([]) }}"
+
+- name: Pre Installation Steps (RBM_BE_CONFIG_NODE)
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - rbm_be_pre_install
+  tasks:
+    - name: Include custom roles
+      include_role:
+        name: "{{ item }}"
+      with_items: "{{ rbm_be_config_node_pre_custom_roles | d([]) }}"
+
+- name: Install AutoInstaller prerequisites
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - ai_prerequisites
+  roles:
+    - install_ai_prerequisites
+
+- name: Install RBM Core
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - rbm_core
+  roles:
+    - rbm_disable_triggers
+    - rbm_install_product
+    - rbm_enable_triggers
+    - unzip_project_fixes
+
+- name: Configure ECA
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - configure_eca
+  tasks:
+    - import_role:
+        name: rbm_install_product
+        tasks_from: configure_eca
+
+- name: Install RB Core patches
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - core_patches
+  roles:
+    - rbm_install_core_patches
+  vars:
+    rbm_install_core_patches_args: "{{ '-skip_fe' if (rtcc_ai_update_caches | d(false)) else '' }} {{ rbm_ai_core_patches_args | d('') }}"
+
+- name: Install RB Custom patches
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - custom_patches
+  roles:
+    - rbm_install_custom_patches
+
+- name: Grant permissions
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - grant_permissions
+  tasks:
+    - import_role:
+        name: rbm_install_product
+        tasks_from: grant_permissions
+
+########################
+# This task deprecated #
+########################
+- name: Update system registry
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - update_registry
+  tasks:
+    - include_role:
+        name: rtcc_update_registry
+      when: rbm_update_registry | d(false)
+
+- name: Run post installation script
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags: always
+  environment: "{{ rbm_env_var_post_install_script | d({}) }}"
+  tasks:
+    - name: Check post install script stat
+      stat:
+        path: "{{ rbm_post_install_script }}"
+      register: post_install_script
+      when:
+        - rbm_post_install_script is defined
+      tags:
+        - rbm_post_install_script
+
+    - name: Execute post install script (if exists)
+      shell: |
+        source {{ infinys_dir }}/infinys.env
+        chmod +x {{ rbm_post_install_script }}
+        {{ rbm_post_install_script }}
+      when:
+        - rbm_post_install_script is defined
+        - post_install_script.stat.exists
+      tags:
+        - rbm_post_install_script
+
+    - name: Set DATABASE and _JAVA_OPTIONS variables in infinys.env file to Oracle Wallet format
+      block:
+        - name: Check that the infinys.env file exists
+          stat:
+            path: "{{ infinys_dir }}/infinys.env"
+          register: infinys_env
+
+        - block:
+            - name: Update DATABASE in infinys.env file
+              lineinfile:
+                dest: "{{ infinys_dir }}/infinys.env"
+                regexp: "^export DATABASE="
+                line: "export DATABASE=/@{{ be_oracle_service_name }}"
+                state: present
+                backrefs: yes
+
+            - name: Update _JAVA_OPTIONS in infinys.env file
+              lineinfile:
+                dest: "{{ infinys_dir }}/infinys.env"
+                regexp: "^export _JAVA_OPTIONS="
+                line: "export _JAVA_OPTIONS=\"-Djava.security.egd=file:///dev/urandom -Duser.timezone={{ timezone }}{{ ' -Doracle.net.tns_admin='~tns_admin if tns_admin is defined else '' }}{{ ' -Doracle.net.wallet_location='~rbm_oracle_wallet_location if rbm_oracle_wallet_enabled | default(false) else '' }}\""
+                state: present
+                backrefs: yes
+          when: infinys_env.stat.exists
+      when: rbm_oracle_wallet_enabled | default(false)
+
+- name: Post Installation Steps (RBM_BE_CONFIG_NODE)
+  hosts: RBM_BE_CONFIG_NODE
+  become: true
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - rbm_be_post_install
+  tasks:
+    - name: Include custom roles
+      include_role:
+        name: "{{ item }}"
+      with_items: "{{ rbm_be_config_node_post_custom_roles | d([]) }}"
+
+- name: Post Installation Steps (RBM_BE_APP)
+  hosts: RBM_BE_APP
+  become: False
+  remote_user: "{{ rbm_remote_user | default(RBM_BE_USER) }}"
+  become_user: "{{ rbm_become_user | default(RBM_BE_USER) }}"
+  gather_facts: False
+  tags:
+    - rbm_batch_post_install
+  tasks:
+    - name: Include custom roles
+      include_role:
+        name: "{{ item }}"
+      with_items: "{{ rbm_be_app_post_custom_roles | d([]) }}"

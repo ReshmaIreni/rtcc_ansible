@@ -1,0 +1,16 @@
+---
+- name: "Find {{ patch }} package in local"
+  delegate_to: localhost
+  become: false
+  stat:
+    path: "{{ playbook_dir }}/../kits/{{ patch }}"
+  register: package
+
+- name: "Copy {{ patch }} package to {{ kits_dir }}"
+  copy:
+    src: "{{ playbook_dir }}/../kits/{{ patch }}"
+    dest: "{{ kits_dir }}"
+    owner: "{{ RBM_BE_USER }}"
+    group: "{{ RBM_BE_GROUP }}"
+    mode: 0644
+  when: package.stat.exists

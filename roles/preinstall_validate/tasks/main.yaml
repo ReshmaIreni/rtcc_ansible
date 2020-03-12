@@ -1,0 +1,64 @@
+---
+# Check existings paths predefined in configs variables or absolute paths
+# This role executing if flag "preinstall_validate_need" set up to yes
+#
+# Parameter:
+#   - vars_file - contains to variables list which define require exist path.
+#
+#     vars_file contain list variable named "preinstall_validate_paths" with structure
+#                                          - { path: "{{varible_from_config}}",      stop_if_not_exist: <yes|no>, note_for_error_message: "<varible_from_config>" }
+#                                          - { path: "{{varible_from_config}}",      stop_if_not_exist: <yes|no>, note_for_error_message: "<varible_from_config>" }
+#                                          - { path: "absolutely path to directory", stop_if_not_exist: <yes|no>, note_for_error_message: "<absolutely path to directory>" }
+#     parameter "stop_if_not_exist" define behavior of ansible if path defined at variable <varible_from_config> not exist
+#
+#
+# Example of variables and parameter:
+#    variables content:
+#          oracle_home: "/u01/app/oracle/product/12.1.0.2"
+#          tmp_path:    "/u02/tmp"
+#
+#    vars_file: /u02/worksource/defaults/require_paths_for_install_on_DB_nodes.yml
+#        it contains :
+#             preinstall_validate_paths:
+#             - { path: "{{ oracle_home }}",         stop_if_not_exist: yes,  note_for_error_message: "<oracle_home>" }
+#             - { path: "{{ tmp_path }}",            stop_if_not_exist: no,   note_for_error_message: "<tmp_path>" }
+#             - { path: "/u01/product/license_key",  stop_if_not_exist: yes,  note_for_error_message: "</u01/product/license_key>"}
+#
+# Example of Role call:
+#    - name: Preinstall validate. Check defined directories on nodes of ADMIN_DB groups
+#      hosts: ADMIN_DB
+#      gather_facts: false
+#      roles:
+#        - {role: preinstall_validate, var_file_with_dirs_for_nodes: '/u02/worksource/defaults/require_paths_for_install_on_DB_nodes.yml' }
+#
+
+- name: validate_vars task
+  include_tasks: validate_vars.yaml
+
+- name: Include variables with require directories
+  include_vars: "{{ var_file_with_dirs_for_nodes }}"
+  when: preinstall_validate_need | bool
+
+- name: validate_dirs task
+  include_tasks: validate_dirs.yaml
+  vars:
+    validate_paths_list: "{{ preinstall_validate_paths }}"
+  when: preinstall_validate_need | bool
+
+- name: check_tablespaces task
+  include_tasks: check_tablespaces.yaml
+  run_once: true
+  vars:
+    preinstall_validate_ts_host: "{{ item }}"
+  with_items: "{{ preinstall_validate_ts_host_list | map('extract', hostvars, ['oracle_service_name']) | list }}"
+  when:
+    - preinstall_validate_need | bool
+    - preinstall_validate_etalon_tablespaces | length
+
+- name: Check free space
+  include_tasks: check_free_space.yaml
+  vars:
+    check_free_space_validate_path: "{{ infinys_dir }}"
+  when:
+    - preinstall_validate_need | bool
+    - preinstall_validate_path is defined

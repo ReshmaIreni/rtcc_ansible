@@ -1,0 +1,13 @@
+WHENEVER SQLERROR EXIT FAILURE
+SET serveroutput ON
+
+DECLARE
+    v_exists number;
+BEGIN
+	dbms_output.put_line('Syncing up cache..');
+	execute immediate('TRUNCATE TABLE IPF_ADMIN.SYSTEMREGISTRYENTRY');
+	execute immediate('INSERT INTO systemregistryentry SELECT * FROM systemregistryentry@{{ be_oracle_service_name }}' );
+end;
+/
+
+EXIT

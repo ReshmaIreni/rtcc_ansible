@@ -1,0 +1,46 @@
+---
+- name: Upload Custom patches
+  include_role:
+    name: upload_patch
+    tasks_from: multiple_patches
+  vars:
+    patch: "{{ item }}"
+  with_items: "{{ rbm_components.custom | d([]) }}"
+  when: rbm_components is defined
+
+- name: Find custom patches
+  find:
+    paths: "{{ kits_dir }}"
+    patterns: "{{ rbm_patterns.custom }}"
+    use_regex: yes
+    recurse: yes
+  register: patches
+  when: rbm_components is undefined
+
+- name: Get custom patches for FE
+  set_fact:
+    rbm_fe_custom_patches: "{%- for pattern in custom_fe_include_mask -%}
+                              {%- set outer_loop = loop -%}
+                              {%- for elem in patches.files | map(attribute='path') | list | select('match', '^.*'~pattern~'.*$') | list  -%}
+                                {{ elem }}{% if not loop.last or not outer_loop.last %};{% endif %}
+                              {%- endfor -%}
+                            {%- endfor -%}"
+  when: rbm_components is undefined
+
+- name: Set custom patches
+  set_fact:
+    rbm_custom_patches: |
+      {% if rbm_components is defined -%}
+      {{ rbm_components.custom | d([]) | map('regex_replace', '(.*)', '{{ kits_dir }}/\1') | list }}
+      {%- else -%}
+      {{ rbm_fe_custom_patches.split(';') | version_sort | regexp_sort(custom_fe_include_mask, custom_fe_exclude_mask) | split_list(custom_fe_patches_delimeter) }}
+      {%- endif %}
+
+- name: Install custom patches
+  include_role:
+    name: install_ai
+  vars:
+    install_ai_netcracker_home: "{{ infinys_dir }}"
+    install_ai_patch_path: "{{ item }}"
+    install_ai_args: "OCS_cache=true {{ rbm_ai_custom_patches_args }}"
+  with_items: "{{ rbm_custom_patches }}"

@@ -1,0 +1,2 @@
+---
+cm_server_properties: " -skip_step=CM_CORE:steps:11 "

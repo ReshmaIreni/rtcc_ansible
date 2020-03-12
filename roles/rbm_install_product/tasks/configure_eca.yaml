@@ -1,0 +1,63 @@
+---
+- name: Check boot.properties stat
+  stat:
+    path: "{{ infinys_dir }}/Infinys/servers/server/security/boot.properties"
+  register: boot_properties
+
+- name: Update boot.properties
+  shell: |
+    source {{ infinys_dir }}/Infinys/bin/setDomainEnv.sh
+    echo "username=$(java weblogic.security.Encrypt {{ pf_container_user_name }})" > {{ infinys_dir }}/Infinys/servers/server/security/boot.properties
+    echo "password=$(java weblogic.security.Encrypt {{ pf_container_user_password }})" >> {{ infinys_dir }}/Infinys/servers/server/security/boot.properties
+  args:
+    chdir: '{{ infinys_dir }}/Infinys'
+  no_log: true
+  when: boot_properties.stat.exists
+
+- name: Check infinys.env file stat
+  stat:
+    path: "{{ infinys_dir }}/infinys.env"
+  register: infinys_env
+
+- name: Adding memory params in infinys.env
+  blockinfile:
+    dest: "{{ infinys_dir }}/infinys.env"
+    marker: "### {mark} ANSIBLE MANAGED BLOCK MEMORY PARAMS###"
+    block: |
+      export USER_MEM_ARGS="{{ USER_MEM_ARGS }}"
+  when:
+    - infinys_env.stat.exists
+    - web_server_type == "wls"
+
+- name: Copy updateWLConnectionPools.py.j2
+  template:
+    src: updateWLConnectionPools.py.j2
+    dest: "{{ infinys_dir }}/Infinys/updateWLConnectionPools.py"
+    owner: "{{ RBM_BE_USER }}"
+    group: "{{ RBM_BE_GROUP }}"
+    mode: 0755
+  when:
+    - web_server_type == "wls"
+    - wlst_scripts | bool
+
+- name: Start updateWLConnectionPools.py
+  shell: |
+    cd {{ infinys_dir }}
+    source {{ infinys_dir }}/infinys.env
+    infinysctl start
+    sleep 60
+    source {{ infinys_dir }}/Infinys/bin/setDomainEnv.sh
+    export CLASSPATH=$CLASSPATH:$INFINYS_ROOT/PF/lib/pf-container.jar
+    cd {{ infinys_dir }}/Infinys
+    java weblogic.WLST updateWLConnectionPools.py
+    rm -f {{ infinys_dir }}/Infinys/updateWLConnectionPools.py
+    cd {{ infinys_dir }}
+    infinysctl stop
+  environment:
+    PF_USER_PASSWORD: "{{ unif_password }}"
+    INF_SCHEMA_PASSWORD: "{{ inf_user_password }}"
+    PF_SCHEMA_PASSWORD: "{{ pf_schema_password }}"
+    PF_SEC_SCHEMA_PASSWORD: "{{ pf_sec_schema_password }}"
+  when:
+    - web_server_type == "wls"
+    - wlst_scripts | bool

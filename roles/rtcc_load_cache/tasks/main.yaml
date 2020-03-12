@@ -1,0 +1,159 @@
+---
+- name: check amfXMLfile.xml
+  delegate_to: localhost
+  become: false
+  stat:
+    path: "{{ TEMPLATE_DIR }}/cache_load.sql.j2"
+  register: cache_load_file
+
+- name: Copy cache_load.sql
+  template:
+    src: "{{ TEMPLATE_DIR + '/'  if cache_load_file.stat.exists else '' }}cache_load.sql.j2"
+    dest: "{{ infinys_dir }}/scripts/cache_load.sql"
+    owner: "{{ RBM_BE_USER }}"
+    group: "{{ RBM_BE_GROUP }}"
+    mode: 0664
+
+- name: Load cache (Execute sql file)
+  shell: |
+    source ./infinys.env
+    sqlplus -s geneva_admin/$rbm_rb_logon_password@{{ be_oracle_service_name }} @scripts/cache_load.sql
+  args:
+    chdir: "{{ infinys_dir }}"
+  environment:
+    rbm_rb_logon_password: "{{ rb_logon_password }}"
+  register: cache_load_sql
+  tags:
+    - skip_ansible_lint
+
+- debug:
+    msg: "{{ cache_load_sql.stdout }}"
+  when: not ansible_check_mode
+
+- name: Load cache (update gparams)
+  include_role:
+    name: service_rtcc
+    tasks_from: merge_gparams.yaml
+  vars:
+    merge_gparams_lines:
+      - { param_name: "SYSdomainingStrategy", type: "STRING", start_dtm: "to_date('01-JAN-70','DD-MON-RR')", value: "T" }
+      - { param_name: "SYSonlineChargingAISInUseBoo", type: "STRING", start_dtm: "to_date('01-JAN-95','DD-MON-RR')", value: "F" }
+      - { param_name: "SYSonlineChargingCachesInUseBoo", type: "STRING", start_dtm: "to_date('01-JAN-95','DD-MON-RR')", value: "T" }
+
+- name: Modify cacheLoader script
+  register: caches
+  shell: |
+    source ./infinys.env
+
+    cp $STAGE_ROOT/RB/RB/bin/cacheLoader.ksh $INFINYS_ROOT/RB/bin/
+    cp $INFINYS_ROOT/RB/bin/cacheLoader.ksh $INFINYS_ROOT/RB/bin/cacheLoader.ksh_orig
+
+    egrep -v "loadfunctions.sh" $INFINYS_ROOT/RB/bin/cacheLoader.ksh_orig > $INFINYS_ROOT/RB/bin/cacheLoader.ksh
+    chmod +x $INFINYS_ROOT/RB/bin/cacheLoader.ksh
+    sed -i 's/stty.*echo//g' $INFINYS_ROOT/RB/bin/cacheLoader.ksh
+    sed -i 's/! -d \$EXPORT_DIR/-z \$EXPORT_DIR/' $INFINYS_ROOT/RB/bin/cacheLoader.ksh
+    sed -i 's/as sysdba/{{ 'as sysdba' if use_sysdba else '' }}/g' $INFINYS_ROOT/RB/bin/cacheLoader.ksh
+    sed -i 's/SQLSYSUSER=sys//g' $INFINYS_ROOT/RB/bin/cacheLoader.ksh
+    sed -i 's/read SQLSYSPWD//g' $INFINYS_ROOT/RB/bin/cacheLoader.ksh
+    cp ${STAGE_ROOT}/RB/RB/schema/olc/systemregistryentry2_clob.ksh ${STAGE_ROOT}/RB/RB/schema/olc/systemregistryentry2_clob.ksh_orig
+    sed -i 's/stty.*echo//g' ${STAGE_ROOT}/RB/RB/schema/olc/systemregistryentry2_clob.ksh
+    sed -i 's/read answer//g' ${STAGE_ROOT}/RB/RB/schema/olc/systemregistryentry2_clob.ksh
+    sed -i 's/export ORA_PWD=$answer//g' ${STAGE_ROOT}/RB/RB/schema/olc/systemregistryentry2_clob.ksh
+  args:
+    chdir: "{{ infinys_dir }}"
+  tags:
+    - skip_ansible_lint
+
+- name: "make dir {{ rtcc_staging_dir }}/ocl"
+  file:
+    path: "{{ rtcc_staging_dir }}/ocl"
+    owner: "{{ RBM_BE_USER }}"
+    group: "{{ RBM_BE_GROUP }}"
+    mode: 0777
+    state: directory
+
+- name: Load cache (Execute .ksh) active
+  shell: |
+    source {{ infinys_dir }}/infinys.env
+    cd {{ rtcc_staging_dir }}/ocl
+    {{ infinys_dir }}/RB/bin/cacheLoader.ksh -f no -e {{ cache_export_dir }}
+  register: cacheloader
+  environment:
+    SQLSYSUSER: "{{ sys_name }}"
+    SQLSYSPWD: "{{ sys_password }}"
+  tags:
+    - skip_ansible_lint
+
+- debug:
+    msg: "{{ cacheloader.stdout }}"
+  when: not ansible_check_mode
+
+- name: Set CACHE_DATA_SET_CNTRL_STATE = 0 for standby
+  shell: |
+    source ./infinys.env
+    sqlplus -s geneva_admin/$rbm_rb_logon_password@{{ be_oracle_service_name }} <<EOL
+    update CACHEDATASET set CACHE_DATA_SET_CNTRL_STATE = 0 where CACHE_DATA_SET_CNTRL_STATE = 3;
+    commit;
+    exit;
+    EOL
+  args:
+    chdir: "{{ infinys_dir }}"
+  environment:
+    rbm_rb_logon_password: "{{ rb_logon_password }}"
+  register: cache_dataset_sql_0
+  tags:
+    - skip_ansible_lint
+
+- debug:
+    msg: "{{ cache_dataset_sql_0.stdout }}"
+  when: not ansible_check_mode
+
+- name: Load cache (Execute .ksh) standby
+  shell: |
+    source {{ infinys_dir }}/infinys.env
+    cd {{ rtcc_staging_dir }}/ocl
+    {{ infinys_dir }}/RB/bin/cacheLoader.ksh -f no -e {{ cache_export_dir }}
+  register: cacheloader_stb
+  environment:
+    SQLSYSUSER: "{{ sys_name }}"
+    SQLSYSPWD: "{{ sys_password }}"
+  tags:
+    - skip_ansible_lint
+
+- debug:
+    msg: "{{ cacheloader_stb.stdout }}"
+  when: not ansible_check_mode
+
+- name: Set CACHE_DATA_SET_CNTRL_STATE = 2
+  shell: |
+    source ./infinys.env
+    sqlplus -s geneva_admin/$rbm_rb_logon_password@{{ be_oracle_service_name }} <<EOL
+    update CACHEDATASET set CACHE_DATA_SET_CNTRL_STATE = 2;
+    commit;
+    exit;
+    EOL
+  environment:
+    rbm_rb_logon_password: "{{ rb_logon_password }}"
+  args:
+    chdir: "{{ infinys_dir }}"
+  register: cache_dataset_sql_2
+  tags:
+    - skip_ansible_lint
+
+- debug:
+    msg: "{{ cache_dataset_sql_2.stdout }}"
+  when: not ansible_check_mode
+
+- name: Characterset fix
+  shell: |
+    source ./infinys.env
+    echo "Characterset is not WE8MSWIN1252. Need implement a fix for triggers.."
+    chmod a+x ${STAGE_ROOT}/RB/RB/schema/olc/systemregistryentry2_clob.ksh
+    ${STAGE_ROOT}/RB/RB/schema/olc/systemregistryentry2_clob.ksh
+  args:
+    chdir: "{{ infinys_dir }}"
+  when: characterset != "WE8MSWIN1252"
+  environment:
+    ORA_PWD: "{{ rb_logon_password }}"
+  tags:
+    - skip_ansible_lint

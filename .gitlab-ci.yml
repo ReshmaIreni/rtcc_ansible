@@ -1,0 +1,50 @@
+---
+image: artifactorycn.netcracker.com:17014/product/gitlab_ci_runner:1.0.0
+
+variables:
+  ANSIBLE_FORCE_COLOR: "true"
+  ANSIBLE_CONFIG: "./ansible.cfg"
+  ANSIBLE_ROLES_PATH: "./roles:./target/common/roles"
+  INSTALLER_PACK_NAME: "rtcc_installer-*.zip"
+
+stages:
+  - Build
+  - Static-tests
+
+#### Build deps
+build:
+  stage: Build
+  script:
+    - mvn clean install
+  artifacts:
+    paths:
+      - target/$INSTALLER_PACK_NAME
+
+#### Static-tests
+ansible-lint:
+  stage: Static-tests
+  script:
+    - ansible-lint --force-color -x 204,503,701 `ls playbooks/* | egrep 'yml$|yaml$'`
+#  allow_failure: true
+  when: always
+  dependencies:
+    - build
+
+yamllint:
+  stage: Static-tests
+  before_script:
+    - pip install yamllint
+  script:
+    - yamllint .
+#  allow_failure: true
+  when: always
+  dependencies:
+    - build
+
+syntax-check:
+  stage: Static-tests
+  script:
+    - for i in `ls playbooks/ | egrep 'yaml$|yml$'`; do ansible-playbook -i none playbooks/$i --syntax-check || exit $?; done;
+  when: always
+  dependencies:
+    - build

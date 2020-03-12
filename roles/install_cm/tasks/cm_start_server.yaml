@@ -1,0 +1,22 @@
+---
+- block:
+    - name: Starting Collection Management
+      shell: |
+        set -e
+        . ./environ.collect
+        cd $COLLECTENV
+        nohup CM_DConfigAgent > $COLLECT_LOGDIR/DConfigAgent.out 2>&1 &
+      args:
+        chdir: "/{{ cm_server_properties['install.base.dir'] }}/COLLECTIONS"
+      register: cm_status
+      ignore_errors: yes
+
+    - name: Collection Management starting failed
+      fail:
+        msg: |
+          [Fail!] Collection Management has not been started.
+      ignore_errors: yes
+      when: cm_status.rc != 0
+
+    - debug: msg="[Success] Collection Management has started successfully!"
+      when: cm_status.rc == 0

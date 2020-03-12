@@ -1,0 +1,29 @@
+---
+- name: "Find {{ component_name }} in rbm_components"
+  set_fact:
+    match: >-
+      {%- set list = components_list | select('match', pattern) | list -%}
+      {{ list[0] if list else None }}
+  when: rbm_components is defined
+
+- name: "Find {{ component_name }} package in local"
+  delegate_to: localhost
+  become: false
+  stat:
+    path: "{{ playbook_dir }}/../kits/{{ match }}"
+  register: patch
+  when:
+    - match is defined
+    - match | length
+
+- name: "Copy {{ component_name }} package to {{ kits_dir }}"
+  copy:
+    src: "{{ playbook_dir }}/../kits/{{ match }}"
+    dest: "{{ kits_dir }}"
+    owner: "{{ RBM_BE_USER }}"
+    group: "{{ RBM_BE_GROUP }}"
+    mode: 0644
+  when:
+    - match is defined
+    - match | length
+    - patch.stat.exists

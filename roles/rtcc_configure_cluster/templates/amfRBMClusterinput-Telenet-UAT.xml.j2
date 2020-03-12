@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="US-ASCII" standalone="no"?>
+<amfconfig xmlns:xs="http://www.w3.org/2001/XMLSchema-instance" xs:noNamespaceSchemaLocation="./amfRBMClusterinput.xsd">
+    <alias clustername="UAT" clustertype="RBM Cluster" clustertypeid="1" infinysroot="/sam/llb/sft/opnsaf/HA_ROOT/INFINYS" platform="LINUX">
+        <node immpm="no" name="eln001822.corp.telenet.be"/>
+        <node immpm="no" name="eln001823.corp.telenet.be"/>
+    </alias>
+<!--cacheonly can have yes / no, default is 'yes' if not specified.-->
+<app cacheonly="yes" name="Online Charging App for RBM Cluster" sdfRASL="yes" sdfStandin="yes">
+        <amfCacheSG>
+            <!--node - hostname-->
+            <!--cache - the Oracle service name for a cache database-->
+            <amfCacheSU cache="UAT130" node="eln001822.corp.telenet.be"/>
+            <amfCacheSU cache="UAT133" node="eln001823.corp.telenet.be"/>
+        </amfCacheSG>
+        <amfCacheSG>
+            <amfCacheSU cache="UAT131" node="eln001823.corp.telenet.be"/>
+            <amfCacheSU cache="UAT132" node="eln001822.corp.telenet.be"/>
+        </amfCacheSG>
+        <amfDistSG>
+            <!--node - hostname-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--commport - port for the ActiveMQ broker-->
+            <!--commreply - activemq broker reply queue-->
+            <!--diameterport (OPTIONAL) - Diameter port for the rted-->
+            <!--nbrRequestThreads (OPTIONAL) - Number of request threads-->
+            <!--nbrResponseThreads (OPTIONAL) - Number of response threads-->
+            <!--recvport - receive port for the RTED-->
+            <!--routing - RTED routing method. Current possible values are Core,Simple and RoundRobin.-->
+            <!--sendport (OPTIONAL) - NE send port for the rted-->
+            <amfDistSU commport="14201" commreply="DIST01_reply" nbrRequestThreads="1" nbrResponseThreads="1" node="eln001822.corp.telenet.be" recvport="19103" routing="RoundRobin"/>
+            <amfDistSU commport="14201" commreply="DIST02_reply" nbrRequestThreads="1" nbrResponseThreads="1" node="eln001823.corp.telenet.be" recvport="19103" routing="RoundRobin"/>
+        </amfDistSG>
+        <amfCollSG>
+            <!--node - hostname-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--p - the port number for the rbsubagent-->
+            <amfCollSU node="eln001822.corp.telenet.be" p="14401"/>
+            <amfCollSU node="eln001823.corp.telenet.be" p="14401"/>
+        </amfCollSG>
+        <amfRaterSG amfRaterCompCount="2">
+            <!--node - hostname-->
+            <!--bufferSize - the maximum number of events the internal buffer can hold-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--commitSize - the maximum number of events to dequeue and process in one DB transaction-->
+            <!--servicename - the rating service name-->
+            <!--commport - activemq broker port-->
+            <!--ratingPoolId - the rating pool ID-->
+            <amfRaterSU bufferSize="20" commitSize="10" commport="14301" node="eln001822.corp.telenet.be" ratingPoolId="1" servicename="RBM_RATE_SERVICE"/>
+            <amfRaterSU bufferSize="20" commitSize="10" commport="14301" node="eln001823.corp.telenet.be" ratingPoolId="1" servicename="RBM_RATE_SERVICE"/>
+        </amfRaterSG>
+        <amfOELSSG amfOELSCompCount="1" targetCache="UAT130,UAT133,UAT131,UAT132">
+            <!--node - hostname-->
+            <!--bufferSize - the maximum number of events the internal buffer can hold-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--commitSize - the maximum number of events to dequeue and process in one DB transaction-->
+            <!--elfBufferSize - the maximum number of events the internal buffer can hold-->
+            <!--elfCommitSize - the maximum number of events to dequeue and process in one DB transaction-->
+            <amfOELSSU bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="eln001822.corp.telenet.be"/>
+            <amfOELSSU bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="eln001822.corp.telenet.be"/>
+            <amfOELSSU bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="eln001823.corp.telenet.be"/>
+            <amfOELSSU bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="eln001823.corp.telenet.be"/>
+            <amfOELSSU bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="eln001823.corp.telenet.be"/>
+            <amfOELSSU bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="eln001823.corp.telenet.be"/>
+            <amfOELSSU bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="eln001822.corp.telenet.be"/>
+            <amfOELSSU bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="eln001822.corp.telenet.be"/>
+        </amfOELSSG>
+        <amfRBTPSG amfRBTPCompCount="1">
+            <!--node - hostname-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--mode - the mode; valid values: pull, scanPull-->
+            <!--remoteHostList (OPTIONAL) - the host to pull from when in scanPull mode-->
+            <amfRBTPSU mode="pull" node="eln001822.corp.telenet.be"/>
+            <amfRBTPSU mode="pull" node="eln001823.corp.telenet.be"/>
+        </amfRBTPSG>
+        <amfOELCSG amfOELCCompCount="1" targetDG="1,2">
+            <!--node - hostname-->
+            <!--bufferSize - the maximum number of events the internal buffer can hold-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--commitSize - the maximum number of events to dequeue and process in one DB transaction-->
+            <!--elfBufferSize - the maximum number of events the internal buffer can hold-->
+            <!--elfCommitSize - the maximum number of events to dequeue and process in one DB transaction-->
+            <amfOELCSU cache="UAT121" bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="eln001822.corp.telenet.be"/>
+            <amfOELCSU cache="UAT121" bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="eln001823.corp.telenet.be"/>
+            <amfOELCSU cache="UAT121" bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="eln001823.corp.telenet.be"/>
+            <amfOELCSU cache="UAT121" bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="eln001822.corp.telenet.be"/>
+        </amfOELCSG>
+        <amfHACSSG>
+            <!--node - hostname-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--commport - port for the RBcommServer; must match port defined for the domain-->
+            <!--domainName - Domain group of the RBcommServer-->
+            <amfHACSSU commport="19421" domainName="HACS01" node="eln001822.corp.telenet.be"/>
+            <amfHACSSU commport="19421" domainName="HACS02" node="eln001823.corp.telenet.be"/>
+        </amfHACSSG>
+        <amfRRTMSG>
+            <!--node - hostname-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--maxRecacheTokens (OPTIONAL) - the maximum number of recache tokens-->
+            <amfRRTMSU maxRecacheTokens="2" node="eln001822.corp.telenet.be"/>
+            <amfRRTMSU maxRecacheTokens="2" node="eln001823.corp.telenet.be"/>
+        </amfRRTMSG>
+        <amfRDLSG targetCache="UAT130,UAT133,UAT131,UAT132">
+            <!--node - hostname-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <amfRDLSU node="eln001822.corp.telenet.be"/>
+            <amfRDLSU node="eln001823.corp.telenet.be"/>
+            <amfRDLSU node="eln001822.corp.telenet.be"/>
+            <amfRDLSU node="eln001823.corp.telenet.be"/>
+            <amfRDLSU node="eln001822.corp.telenet.be"/>
+            <amfRDLSU node="eln001823.corp.telenet.be"/>
+            <amfRDLSU node="eln001822.corp.telenet.be"/>
+            <amfRDLSU node="eln001823.corp.telenet.be"/>
+        </amfRDLSG>
+        <amfDUMSG amfDUMExtCompCount="2" amfDUMProdCompCount="1" targetCache="UAT130,UAT133,UAT131,UAT132">
+            <!--node - hostname-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--commitSize - the maximum number of events to dequeue and process in one DB transaction-->
+            <!--dumProductDelay - the product poll delay-->
+            <!--dumExtensionDelay - the extension poll delay-->
+            <!--dumCatDelay - the catalog poll delay-->
+            <!--dumCatDriver - the driver type of the DUMCat component-->
+            <amfDUMSU commitSize="20" dumCatDelay="5000" dumCatDriver="product" dumExtensionDelay="5000" dumProductDelay="5000" node="eln001822.corp.telenet.be"/>
+            <amfDUMSU commitSize="20" dumCatDelay="5000" dumCatDriver="product" dumExtensionDelay="5000" dumProductDelay="5000" node="eln001823.corp.telenet.be"/>
+            <amfDUMSU commitSize="20" dumCatDelay="5000" dumCatDriver="product" dumExtensionDelay="5000" dumProductDelay="5000" node="eln001822.corp.telenet.be"/>
+            <amfDUMSU commitSize="20" dumCatDelay="5000" dumCatDriver="product" dumExtensionDelay="5000" dumProductDelay="5000" node="eln001823.corp.telenet.be"/>
+            <amfDUMSU commitSize="20" dumCatDelay="5000" dumCatDriver="product" dumExtensionDelay="5000" dumProductDelay="5000" node="eln001822.corp.telenet.be"/>
+            <amfDUMSU commitSize="20" dumCatDelay="5000" dumCatDriver="product" dumExtensionDelay="5000" dumProductDelay="5000" node="eln001823.corp.telenet.be"/>
+            <amfDUMSU commitSize="20" dumCatDelay="5000" dumCatDriver="product" dumExtensionDelay="5000" dumProductDelay="5000" node="eln001822.corp.telenet.be"/>
+            <amfDUMSU commitSize="20" dumCatDelay="5000" dumCatDriver="product" dumExtensionDelay="5000" dumProductDelay="5000" node="eln001823.corp.telenet.be"/>
+        </amfDUMSG>
+        <amfUDRUSG amfUDRUCompCount="1" targetDB="UAT130,UAT133,UAT131,UAT132">
+            <!--node - hostname-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--d - The UDRU process polling interval in milliseconds.-->
+            <!--dg (OPTIONAL) - Domain group.-->
+            <!--mode - mode of the UDRU component.Valid values are pcrf or priming.-->
+            <amfUDRUSU d="5000" mode="priming" node="eln001822.corp.telenet.be"/>
+            <amfUDRUSU d="5000" mode="priming" node="eln001823.corp.telenet.be"/>
+            <amfUDRUSU d="5000" mode="priming" node="eln001822.corp.telenet.be"/>
+            <amfUDRUSU d="5000" mode="priming" node="eln001823.corp.telenet.be"/>
+            <amfUDRUSU d="5000" mode="priming" node="eln001822.corp.telenet.be"/>
+            <amfUDRUSU d="5000" mode="priming" node="eln001823.corp.telenet.be"/>
+            <amfUDRUSU d="5000" mode="priming" node="eln001822.corp.telenet.be"/>
+            <amfUDRUSU d="5000" mode="priming" node="eln001823.corp.telenet.be"/>
+        </amfUDRUSG>
+        <amfBEMSG>
+            <!--node - hostname-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <amfBEMSU node="eln001822.corp.telenet.be"/>
+            <amfBEMSU node="eln001823.corp.telenet.be"/>
+        </amfBEMSG>
+        <amfRARSG amfRARCompCount="1" targetDG="1,2">
+            <!--node - hostname-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--d (OPTIONAL) - TMPI daemon mode argument-->
+            <!--mode - mode of the RAR component.Valid values are udru or activemq.-->
+            <amfRARSU mode="udru" node="eln001822.corp.telenet.be"/>
+            <amfRARSU mode="udru" node="eln001823.corp.telenet.be"/>
+            <amfRARSU mode="udru" node="eln001822.corp.telenet.be"/>
+            <amfRARSU mode="udru" node="eln001823.corp.telenet.be"/>
+        </amfRARSG>
+        <amfOELSnoELFSG amfOELSnoELFCompCount="1" targetCache="UAT130,UAT133,UAT131,UAT132">
+            <!--node - hostname-->
+            <!--bufferSize - the maximum number of events the internal buffer can hold-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--commitSize - the maximum number of events to dequeue and process in one DB transaction-->
+            <amfOELSnoELFSU bufferSize="20" commitSize="10" node="eln001822.corp.telenet.be"/>
+            <amfOELSnoELFSU bufferSize="20" commitSize="10" node="eln001823.corp.telenet.be"/>
+            <amfOELSnoELFSU bufferSize="20" commitSize="10" node="eln001822.corp.telenet.be"/>
+            <amfOELSnoELFSU bufferSize="20" commitSize="10" node="eln001823.corp.telenet.be"/>
+            <amfOELSnoELFSU bufferSize="20" commitSize="10" node="eln001822.corp.telenet.be"/>
+            <amfOELSnoELFSU bufferSize="20" commitSize="10" node="eln001823.corp.telenet.be"/>
+            <amfOELSnoELFSU bufferSize="20" commitSize="10" node="eln001822.corp.telenet.be"/>
+            <amfOELSnoELFSU bufferSize="20" commitSize="10" node="eln001823.corp.telenet.be"/>
+        </amfOELSnoELFSG>
+        <amfRTRIDistSG>
+            <!--node - hostname-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--commport - activemq broker port-->
+            <!--commreply - activemq broker reply queue-->
+            <!--diameterport (OPTIONAL) - Diameter port for the rted-->
+            <!--nbrRequestThreads (OPTIONAL) - Number of request threads-->
+            <!--nbrResponseThreads (OPTIONAL) - Number of response threads-->
+            <!--recvport - receive port for the RTED-->
+            <!--routing - RTED routing method. Current possible values are Core,Simple and RoundRobin.-->
+            <!--sendport (OPTIONAL) - NE send port for the rted-->
+            <amfRTRIDistSU commport="14203" commreply="DIST03_reply" nbrRequestThreads="1" nbrResponseThreads="1" node="eln001822.corp.telenet.be" recvport="14101" routing="RoundRobin"/>
+            <amfRTRIDistSU commport="14203" commreply="DIST04_reply" nbrRequestThreads="1" nbrResponseThreads="1" node="eln001823.corp.telenet.be" recvport="14101" routing="RoundRobin"/>
+        </amfRTRIDistSG>
+        <amfRtopRaterSG amfRtopRaterCompCount="1" targetDG="1,2">
+            <!--node - hostname-->
+            <!--bufferSize - the maximum number of events the internal buffer can hold-->
+            <!--commitSize - the maximum number of events to dequeue and process in one DB transaction-->
+            <!--fileSubType - Specifies the file subtype to use in reject handling-->
+            <!--fileType - Specifies the file type to use in reject handling-->
+            <!--instanceName (OPTIONAL) - Instance Name-->
+            <!--mode - The mode in which RTOP is booted. (0 -> Default, 1 -> Account Transfer-->
+            <amfRtopRaterSU bufferSize="20" commitSize="10" fileSubType="1" fileType="3" mode="0" node="eln001822.corp.telenet.be"/>
+            <amfRtopRaterSU bufferSize="20" commitSize="10" fileSubType="1" fileType="3" mode="0" node="eln001823.corp.telenet.be"/>
+            <amfRtopRaterSU bufferSize="20" commitSize="10" fileSubType="1" fileType="3" mode="0" node="eln001822.corp.telenet.be"/>
+            <amfRtopRaterSU bufferSize="20" commitSize="10" fileSubType="1" fileType="3" mode="0" node="eln001823.corp.telenet.be"/>
+        </amfRtopRaterSG>
+        <amfBCMPSG amfBCMPCompCount="1">
+            <!--node - hostname-->
+            <!--commitSize - The maximum number of consumer events to dequeue and process in one DB transaction-->
+            <!--consumerGroup - Kafka consumer group to use when registering with the kafka topic-->
+            <!--topicName - Kafka topic name which need to be polled-->
+            <amfBCMPSU node="eln001822.corp.telenet.be" commitSize="20" consumerGroup="1" topicName="bucket-expiry-topic" />
+            <amfBCMPSU node="eln001822.corp.telenet.be" commitSize="20" consumerGroup="2" topicName="price-plan-change-topic" />
+            <amfBCMPSU node="eln001823.corp.telenet.be" commitSize="20" consumerGroup="1" topicName="bucket-expiry-topic" />
+            <amfBCMPSU node="eln001823.corp.telenet.be" commitSize="20" consumerGroup="2" topicName="price-plan-change-topic" />
+        </amfBCMPSG>
+        <amfRMPSG>
+            <!--node - hostname-->
+            <!--cache (OPTIONAL) - the Oracle service name for a cache database-->
+            <!--commhost - the host to receive response of healthcheck-->
+            <!--commport - the port to receive response of healthcheck-->
+            <!--commreply - the reply queue to receive response of healthcheck-->
+            <amfRMPSU node="eln001822.corp.telenet.be" commhost="eln001822.corp.telenet.be" commport="14205" commreply="RMP01_reply"/>
+            <amfRMPSU node="eln001823.corp.telenet.be" commhost="eln001823.corp.telenet.be" commport="14205" commreply="RMP02_reply"/>
+        </amfRMPSG>
+    </app>
+</amfconfig>

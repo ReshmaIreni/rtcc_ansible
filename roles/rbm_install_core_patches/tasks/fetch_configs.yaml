@@ -1,0 +1,9 @@
+---
+- name: Begin fetching
+  include_role:
+    name: get_configs
+    tasks_from: fetch_from_fs
+  vars:
+    template_files:
+      - { template: 'config_RTCC.properties.j2', 'remote_file':'{{ infinys_dir }}/AutoInstaller/config_RTCC.properties' }
+    application_name: rtcc

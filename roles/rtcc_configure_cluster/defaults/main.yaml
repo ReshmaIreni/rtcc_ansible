@@ -1,0 +1,16 @@
+---
+processes_excludes: []
+update_externalconnections: true
+
+rtcc_ddrs_port: 9011
+rtcc_kafka_port: 9092
+rtcc_zookeeper_port: 2181
+rtcc_cassandra_port: 9042
+rtcc_ignite_port: 8090
+
+rtcc_rating_pool_amt: 1
+rtcc_rater_port: 14301
+
+amfIgniteRaterSG:
+  amfRaterCompCount: 1
+

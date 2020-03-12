@@ -1,0 +1,3 @@
+---
+# List of variables defined required paths on all nodes
+preinstall_validate_paths: []

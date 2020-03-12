@@ -1,0 +1,51 @@
+---
+- name: Create HA directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ RBM_FE_USER }}"
+    group: "{{ RBM_FE_GROUP }}"
+  tags:
+    - provision
+  with_items:
+    - "{{ HA_ROOT }}"
+    - "{{ HA_ROOT }}/distribution"
+    - "{{ HA_ROOT }}/instantiation"
+    - "{{ HA_ROOT }}/logs/event"
+    - "{{ HA_ROOT }}/logs/instantiation"
+    - "{{ HA_ROOT }}/local"
+    - "{{ HA_ROOT }}/scripts"
+    - "{{ HA_ROOT }}/work/coll"
+    - "{{ rtcc_trace_shm_dir }}"
+    - "{{ rtcc_prov_log_dir }}"
+
+- name: Check that the instanceArgsFile.args file exists
+  run_once: true
+  stat:
+    path: "{{ infinys_dir }}/instanceArgsFile.args"
+  register: instanceArgsFile
+
+- name: Set local settings
+  template:
+    src: settings.env.j2
+    dest: "{{ HA_ROOT }}/local/settings.env"
+    owner: "{{ RBM_FE_USER }}"
+    group: "{{ RBM_FE_GROUP }}"
+    mode: 0755
+
+- name: Set TRACES full
+  when: set_traces == "full"
+  blockinfile:
+    marker: "### {mark} ANSIBLE MANAGED BLOCK SET TRACES###"
+    dest: "{{ HA_ROOT }}/local/settings.env"
+    block: |
+        export TRACE_ALL=TRUE
+        export TRACE_LEVEL=FULL
+
+- name: Set TRACES dynamic
+  when: set_traces == "dynamic"
+  blockinfile:
+    marker: "### {mark} ANSIBLE MANAGED BLOCK SET TRACES###"
+    dest: "{{ HA_ROOT }}/local/settings.env"
+    block: |
+        export USE_DYNAMIC_TRACING=TRUE

@@ -1,0 +1,11 @@
+---
+build:
+  env:
+    type: microservice
+    version: jdk-8u141_gradle-3.4.1_mvn-3.3.9_sandbox
+  networkRules: sandbox
+
+publication:
+  files:
+    GENERIC1.0:
+      - mask: target/rtcc_installer_*.zip

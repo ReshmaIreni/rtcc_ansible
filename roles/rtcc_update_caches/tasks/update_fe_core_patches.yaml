@@ -1,0 +1,36 @@
+---
+- name: Upload Core Patches
+  include_role:
+    name: upload_patch
+    tasks_from: multiple_patches
+  vars:
+    patch: "{{ item }}"
+  with_items: "{{ rbm_components.product_delta | d([]) }}"
+  when: rbm_components is defined
+
+- name: Find RB Core patches
+  find:
+    paths: "{{ kits_dir }}"
+    patterns: "{{ rbm_patterns.rb_delta }}"
+    use_regex: yes
+    recurse: yes
+  register: core_patches
+  when: rbm_components is undefined
+
+- name: Set core patches
+  set_fact:
+    rbm_core_patches: |
+      {% if rbm_components is defined -%}
+      {{ rbm_components.product_delta | d([]) | map('regex_replace', '(.*)', '{{ kits_dir }}/\1') | list }}
+      {%- elif rbm_components is undefined -%}
+      {{ core_patches.files | map(attribute='path') | list | version_sort }}
+      {%- endif %}
+
+- name: Install RB Core patches
+  include_role:
+    name: install_ai
+  vars:
+    install_ai_netcracker_home: "{{ infinys_dir }}"
+    install_ai_patch_path: "{{ item }}"
+    install_ai_args: "skip_val=true -skip_be {{ rbm_ai_core_patches_args | d('') }}"
+  with_items: "{{ rbm_core_patches  }}"

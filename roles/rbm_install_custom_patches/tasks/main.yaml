@@ -1,0 +1,74 @@
+---
+- name: Check that the infinys.env file exists
+  stat:
+    path: "{{ infinys_dir }}/infinys.env"
+  register: infinys_env
+
+- name: Update infinys.env
+  blockinfile:
+    dest: "{{ infinys_dir }}/infinys.env"
+    marker: "### {mark} ANSIBLE MANAGED BLOCK PATCHES###"
+    block: |
+      export COMMSERVER_NO_ACK=Y
+      export DB_HOST={{ rbm_be_db_host }}
+      export DB_PORT={{ oracle_port }}
+      export NLS_LANG={{ nls_lang }}
+      export HTTP_PORT={{ web_server_port }}
+      export REJECT_STREAM=2
+      export _JAVA_OPTIONS="-Djava.security.egd=file:///dev/urandom -Duser.timezone={{ timezone }}{{ ' -Doracle.net.tns_admin='~tns_admin if tns_admin is defined else '' }}{{ ' -Doracle.net.wallet_location='~rbm_oracle_wallet_location if rbm_oracle_wallet_enabled else '' }}"
+      export TMchildProcessPort_local={{ tm_child_pp }}
+      export TMsystemMonitorPort_local={{ tm_sm_port }}
+      export TRDclientPort_local={{ dcfg_agent_port }}
+      export HOSTNAME=`hostname`
+      {% if zookeeper_home is defined %}
+      export ZOOKEEPER_HOME={{ zookeeper_home }}
+      export LD_LIBRARY_PATH={{ zookeeper_home }}/src/c/.libs:$LD_LIBRARY_PATH
+      {% endif %}
+      export PERL_HOME={{ perl_home }}
+      export PERL5LIB={{ infinys_dir }}/RB/bin:{{ perl_home }}/lib
+      export PATH={{ perl_home }}/bin:$PATH
+      export LD_LIBRARY_PATH=$PERL_HOME/lib:$JAVA_HOME/jre/lib/amd64/server:$LD_LIBRARY_PATH
+      export GENEVA_USER=geneva_admin
+      {% if tns_admin is defined %}
+      export TNS_ADMIN={{ tns_admin }}
+      {% endif %}
+      {{ custom_variables }}
+  when: infinys_env.stat.exists
+
+- name: Upload Custom patches
+  include_role:
+    name: upload_patch
+    tasks_from: multiple_patches
+  vars:
+    patch: "{{ item }}"
+  with_items: "{{ rbm_components.custom | d([]) }}"
+  when: rbm_components is defined
+
+- name: Find custom patches
+  find:
+    paths: "{{ kits_dir }}"
+    patterns: "{{ rbm_patterns.custom }}"
+    use_regex: yes
+    recurse: yes
+  register: patches
+  when: rbm_components is undefined
+
+- name: Set custom patches
+  set_fact:
+    rbm_custom_patches: |
+      {% if rbm_components is defined -%}
+      {{ rbm_components.custom | d([]) | map('regex_replace', '(.*)', '{{ kits_dir }}/\1') | list }}
+      {%- else -%}
+      {{ patches.files | map(attribute='path') | list | version_sort | regexp_sort(custom_include_mask, custom_exclude_mask) | split_list(custom_patches_delimeter) }}
+      {%- endif %}
+
+- name: Install custom patches
+  include_role:
+    name: install_ai
+  vars:
+    install_ai_netcracker_home: "{{ infinys_dir }}"
+    install_ai_patch_path: "{{ item }}"
+    install_ai_config_files: "{{ custom_configs }}"
+    install_ai_additional_properties: "{{ custom_properties }}"
+    install_ai_args: "{{ rbm_ai_custom_patches_args | d('') }}"
+  with_items: "{{ rbm_custom_patches }}"

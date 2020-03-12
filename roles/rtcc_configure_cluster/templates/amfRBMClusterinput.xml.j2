@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="US-ASCII" standalone="no"?>
+<amfconfig xmlns:xs="http://www.w3.org/2001/XMLSchema-instance" xs:noNamespaceSchemaLocation="./amfRBMClusterinput.xsd">
+    <alias clustername="{{ CLUSTER_NAME }}" clustertype="RBM Cluster" clustertypeid="1" infinysroot="{{HA_ROOT}}/INFINYS" platform="LINUX">
+{% for db_node in groups['RBM_FE_DB'] %}
+{% for db_service in hostvars[db_node]['db_nodename'] %}
+        <node immpm="no" name="{{ db_service }}"/>
+{% endfor %}
+{% endfor %}
+    </alias>
+<!--cacheonly can have yes / no, default is 'yes' if not specified.-->
+<app cacheonly="yes" name="Online Charging App for RBM Cluster">
+        <amfCacheSG>
+            <!--node - hostname-->
+            <!--cache - the Oracle service name for a cache database-->
+{% for db_node in groups['RBM_FE_DB'] %}
+{% for sid in hostvars[db_node]['oracle_service_name'] %}
+{% for db_service in hostvars[db_node]['db_nodename'] %}
+            <amfCacheSU cache="{{ sid }}" node="{{ db_service }}"/>
+{% endfor %}
+{% endfor %}
+{% endfor %}
+        </amfCacheSG>
+        <amfDistSG>
+            <!--node - hostname-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--commport - port for the ActiveMQ broker-->
+            <!--commreply - activemq broker reply queue-->
+            <!--diameterport (OPTIONAL) - Diameter port for the rted-->
+            <!--nbrRequestThreads (OPTIONAL) - Number of request threads-->
+            <!--nbrResponseThreads (OPTIONAL) - Number of response threads-->
+            <!--recvport - receive port for the RTED-->
+            <!--routing - RTED routing method. Current possible values are Core,Simple and RoundRobin.-->
+            <!--sendport (OPTIONAL) - NE send port for the rted-->
+{% for db_node in groups['RBM_FE_DB'] %}
+{% for db_service in hostvars[db_node]['db_nodename'] %}
+            <amfDistSU commport="14201" commreply="DIST0{{ loop.index }}_reply" nbrRequestThreads="1" nbrResponseThreads="1" node="{{ db_service }}" recvport="14103" routing="RoundRobin"/>
+{% endfor %}
+{% endfor %}
+        </amfDistSG>
+        <amfCollSG>
+            <!--node - hostname-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--p - the port number for the rbsubagent-->
+{% for db_node in groups['RBM_FE_DB'] %}
+{% for db_service in hostvars[db_node]['db_nodename'] %}
+            <amfCollSU node="{{ db_service }}" p="14401"/>
+{% endfor %}
+{% endfor %}
+        </amfCollSG>
+        <amfRaterSG amfRaterCompCount="2">
+            <!--node - hostname-->
+            <!--bufferSize - the maximum number of events the internal buffer can hold-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--commitSize - the maximum number of events to dequeue and process in one DB transaction-->
+            <!--servicename - the rating service name-->
+            <!--commport - activemq broker port-->
+            <!--ratingPoolId - the rating pool ID-->
+{% for host in groups['RBM_FE_HA'] %}
+            <amfRaterSU bufferSize="20" commitSize="10" commport="14301" node="{{ hostvars[host]['nodename'] }}" ratingPoolId="{{ loop.index }}" servicename="RBM_RATE_SERVICE"/>
+{% endfor %}
+        </amfRaterSG>
+        <amfOELSSG amfOELSCompCount="1" targetCache="{% for host in groups['RBM_FE_DB'] %}{{ hostvars[host]['oracle_service_name'] | join(",") }}{{ "," if not loop.last else "" }}{% endfor %}">
+            <!--node - hostname-->
+            <!--bufferSize - the maximum number of events the internal buffer can hold-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--commitSize - the maximum number of events to dequeue and process in one DB transaction-->
+            <!--elfBufferSize - the maximum number of events the internal buffer can hold-->
+            <!--elfCommitSize - the maximum number of events to dequeue and process in one DB transaction-->
+{% for host in groups['RBM_FE_DB'] %}
+{% for sn in hostvars[host]['oracle_service_name'] %}
+{% for db_service in hostvars[host]['db_nodename'] %}
+            <amfOELSSU bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="{{ db_service }}"/>
+{% endfor %}
+{% endfor %}
+{% endfor %}
+{% for host in groups['RBM_FE_DB'] %}
+{% for sn in hostvars[host]['oracle_service_name'] %}
+{% for db_service in hostvars[host]['db_nodename'] %}
+            <amfOELSSU bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="{{ db_service }}"/>
+{% endfor %}
+{% endfor %}
+{% endfor %}
+        </amfOELSSG>
+        <amfOELCSG amfOELCCompCount="1" targetDG="{{ fe_dg_list | join(",") }}">
+            <!--node - hostname-->
+            <!--bufferSize - the maximum number of events the internal buffer can hold-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--commitSize - the maximum number of events to dequeue and process in one DB transaction-->
+            <!--elfBufferSize - the maximum number of events the internal buffer can hold-->
+            <!--elfCommitSize - the maximum number of events to dequeue and process in one DB transaction-->
+{% for host in groups['RBM_FE_DB'] %}
+{% for dg in fe_dg_list %}
+{% for db_service in hostvars[host]['db_nodename'] %}
+            <amfOELCSU cache="{{ oracle_db_sid }}" bufferSize="21" commitSize="20" elfBufferSize="1" elfCommitSize="1" node="{{ db_service }}"/>
+{% endfor %}
+{% endfor %}
+{% endfor %}
+        </amfOELCSG>
+        <amfHACSSG>
+            <!--node - hostname-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--commport - port for the RBcommServer; must match port defined for the domain-->
+            <!--domainName - Domain group of the RBcommServer-->
+{% for host in groups['RBM_FE_DB'] %}
+{% for db_service in hostvars[host]['db_nodename'] %}
+            <amfHACSSU commport="14421" domainName="HACS0{{ loop.index }}" node="{{ db_service }}"/>
+{% endfor %}
+{% endfor %}
+        </amfHACSSG>
+        <amfRRTMSG>
+            <!--node - hostname-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--maxRecacheTokens (OPTIONAL) - the maximum number of recache tokens-->
+{% for host in groups['RBM_FE_DB'] %}
+{% for db_service in hostvars[host]['db_nodename'] %}
+            <amfRRTMSU maxRecacheTokens="2" node="{{ db_service }}"/>
+{% endfor %}
+{% endfor %}
+        </amfRRTMSG>
+        <amfRDLSG targetCache="{% for host in groups['RBM_FE_DB'] %}{{ hostvars[host]['oracle_service_name'] | join(",") }}{{ "," if not loop.last else "" }}{% endfor %}">
+            <!--node - hostname-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+{% for host in groups['RBM_FE_DB'] %}
+{% for sn in hostvars[host]['oracle_service_name'] %}
+{% for db_service in hostvars[host]['db_nodename'] %}
+            <amfRDLSU node="{{ db_service }}"/>
+{% endfor %}
+{% endfor %}
+{% endfor %}
+{% for host in groups['RBM_FE_DB'] %}
+{% for sn in hostvars[host]['oracle_service_name'] %}
+{% for db_service in hostvars[host]['db_nodename'] %}
+            <amfRDLSU node="{{ db_service }}"/>
+{% endfor %}
+{% endfor %}
+{% endfor %}
+        </amfRDLSG>
+        <amfDUMSG amfDUMExtCompCount="1" amfDUMProdCompCount="1" targetCache="{% for host in groups['RBM_FE_DB'] %}{{ hostvars[host]['oracle_service_name'] | join(",") }}{{ "," if not loop.last else "" }}{% endfor %}">
+            <!--node - hostname-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--commitSize - the maximum number of events to dequeue and process in one DB transaction-->
+            <!--dumProductDelay - the product poll delay-->
+            <!--dumExtensionDelay - the extension poll delay-->
+            <!--dumCatDelay - the catalog poll delay-->
+            <!--dumCatDriver - the driver type of the DUMCat component-->
+{% for host in groups['RBM_FE_DB'] %}
+{% for sn in hostvars[host]['oracle_service_name'] %}
+{% for db_service in hostvars[host]['db_nodename'] %}
+            <amfDUMSU commitSize="20" dumCatDelay="5000" dumCatDriver="product" dumExtensionDelay="5000" dumProductDelay="5000" node="{{ db_service }}"/>
+{% endfor %}
+{% endfor %}
+{% endfor %}
+{% for host in groups['RBM_FE_DB'] %}
+{% for sn in hostvars[host]['oracle_service_name'] %}
+{% for db_service in hostvars[host]['db_nodename'] %}
+            <amfDUMSU commitSize="20" dumCatDelay="5000" dumCatDriver="product" dumExtensionDelay="5000" dumProductDelay="5000" node="{{ db_service }}"/>
+{% endfor %}
+{% endfor %}
+{% endfor %}
+        </amfDUMSG>
+        <amfUDRUSG amfUDRUCompCount="1" targetDB="{% for host in groups['RBM_FE_DB'] %}{{ hostvars[host]['oracle_service_name'] | join(",") }}{{ "," if not loop.last else "" }}{% endfor %}">
+            <!--node - hostname-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--dg (OPTIONAL) - Domain group.-->
+            <!--mode - mode of the UDRU component.Valid values are pcrf or priming.-->
+{% for host in groups['RBM_FE_DB'] %}
+{% for sn in hostvars[host]['oracle_service_name'] %}
+{% for db_service in hostvars[host]['db_nodename'] %}
+            <amfUDRUSU d="5000" mode="priming" node="{{ db_service }}"/>
+{% endfor %}
+{% endfor %}
+{% endfor %}
+{% for host in groups['RBM_FE_DB'] %}
+{% for sn in hostvars[host]['oracle_service_name'] %}
+{% for db_service in hostvars[host]['db_nodename'] %}
+            <amfUDRUSU d="5000" mode="priming" node="{{ db_service }}"/>
+{% endfor %}
+{% endfor %}
+{% endfor %}
+        </amfUDRUSG>
+        <amfBEMSG>
+            <!--node - hostname-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+{% for host in groups['RBM_FE_DB'] %}
+{% for db_service in hostvars[host]['db_nodename'] %}
+            <amfBEMSU node="{{ db_service }}"/>
+{% endfor %}
+{% endfor %}
+        </amfBEMSG>
+        <amfRARSG amfRARCompCount="1" targetDG="{{ fe_dg_list | join(",") }}">
+            <!--node - hostname-->
+            <!--cache (OPTIONAL) - the Oracle service name for the initial connection-->
+            <!--d (OPTIONAL) - TMPI daemon mode argument-->
+            <!--mode - mode of the RAR component.Valid values are udru or activemq.-->
+{% for host in groups['RBM_FE_DB'] %}
+{% for dg in fe_dg_list %}
+{% for db_service in hostvars[host]['db_nodename'] %}
+            <amfRARSU mode="udru" node="{{ db_service }}"/>
+{% endfor %}
+{% endfor %}
+{% endfor %}
+        </amfRARSG>
+        <amfBCMPSG amfBCMPCompCount="1">
+            <!--node - hostname-->
+            <!--commitSize - The maximum number of consumer events to dequeue and process in one DB transaction-->
+            <!--consumerGroup - Kafka consumer group to use when registering with the kafka topic-->
+            <!--topicName - Kafka topic name which need to be polled-->
+{% for host in groups['RBM_FE_HA'] %}
+            <amfBCMPSU node="{{ hostvars[host]['nodename'] }}" commitSize="5" consumerGroup="CG1" topicName="bucket-expiry-topic"/>
+            <amfBCMPSU node="{{ hostvars[host]['nodename'] }}" commitSize="5" consumerGroup="CG2" topicName="price-plan-change-topic"/>
+{% endfor %}
+        </amfBCMPSG>
+        <amfRMPSG>
+            <!--node - hostname-->
+            <!--cache - the Oracle service name for a cache database-->
+            <!--commhost - the host to receive response of healthcheck-->
+            <!--commport - the port to receive response of healthcheck-->
+            <!--commreply - the reply queue to receive response of healthcheck-->
+{% for host in groups['RBM_FE_HA'] %}
+            <amfRMPSU node="{{ hostvars[host]['nodename'] }}" commhost="{{ hostvars[host]['nodename'] }}" commport="14205" commreply="RMP_SU0{{ loop.index }}_reply"/>
+{% endfor %}
+        </amfRMPSG>
+    </app>
+</amfconfig>

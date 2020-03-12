@@ -1,0 +1,37 @@
+PROV_HA_ROOT={{ HA_ROOT }}
+PROV_DIST_TARGET={{ HA_ROOT }}/distribution
+PROV_REMOTE_USER={{ RBM_FE_USER }}
+PROV_REMOTE_GROUP={{ RBM_FE_GROUP }}
+PROV_AIS_LOG_DIR={{ rtcc_ais_log_dir }}
+PROV_AIS_LOG_DAYS_TO_ZIP=10
+PROV_AIS_LOG_DAYS_TO_DELETE=30
+PROV_ORACLE_HOME={{ oracle_home }}
+PROV_BACKEND_SERVICE_NAME={{ oracle_db_sid }}
+PROV_ORACLE_UNIX_ID={{ oracle_user }}
+PROV_ORACLE_DATABASE_ID={{ rtcc_database_user }}
+PROV_ORACLE_DATABASE_PWD={{ rtcc_database_password_encrypted.stdout }}
+PROV_JAVA_HOME={{ java_dir }}
+PROV_LOG_DIR={{ rtcc_prov_log_dir }}
+PROV_LIC_DIR={{ rbm_license_dir }}
+PROV_ACTIVEMQ_HOME={{ activemq_home }}
+PROV_ACTIVEMQ_CMS_HOME={{ activemq_cms_home }}
+PROV_ACTIVEMQ_APR_HOME={{ apr_home }}
+PROV_REALM_VALUE=netcracker.com
+PROV_THREADS_PER_SERVER=5
+PROV_TZ={{ timezone }}
+PROV_NLS_LANG={{ nls_lang }}
+PROV_TRACE_SHM_DIR={{ rtcc_trace_shm_dir }}
+PROV_ACTIVEMQ_OPTS_MEMORY_XMS=1024
+PROV_ACTIVEMQ_OPTS_MEMORY_XMX=1024
+PROV_IGNITE_ENV_FILE={{ ignite_env_file }}
+PROV_IGNITE_PROXY_HOME={{ ignite_proxy_home }}
+PROV_ZOOKEEPER_HOME={{ zookeeper_home }}
+{% set hosts = groups['RBM_BE_APP'] | union(groups['RBM_FE_HA']) %}
+{% set sup_hosts = hosts | map('extract', hostvars, 'oam_nodename') | list %}
+{% set ent_hosts = hosts | map('extract', hostvars, 'rtcc_nodename') | list %}
+{%- if sup_hosts | difference(ent_hosts) -%}
+{% set hostsPairs = sup_hosts | zip(ent_hosts) | list %}
+PROV_RB_CONVERT_HOST_NAMES="{% for supHost, entHost in hostsPairs -%}
+	{{ supHost }},{{ entHost }}{% if not loop.last %}|{% endif %}
+{%- endfor %}"
+{%- endif %}

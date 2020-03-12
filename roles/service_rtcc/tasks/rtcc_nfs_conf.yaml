@@ -1,0 +1,16 @@
+---
+- name: Copy exports file
+  template:
+    src: exports.j2
+    dest: /etc/exports.d/infinys_dir.exports
+    owner: root
+    group: root
+    mode: 0644
+  register: nfs_conf
+
+- name: Restart NFS immediately if exports are updated
+  service:
+    name: nfs
+    state: restarted
+    enabled: yes
+  when: nfs_conf.changed

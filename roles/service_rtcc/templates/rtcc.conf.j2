@@ -1,0 +1,35 @@
+{{ opensaf_home }}/crash/*.[!gz] {
+  daily
+  minsize 1M
+  dateext
+  maxage 5
+  rotate 1
+  compress
+  missingok
+  notifempty
+}
+
+{{ HA_ROOT }}/logs/event/*/*.LOG 
+{{ HA_ROOT }}/logs/event/*/*.log {
+  hourly
+  minsize 1M
+  dateext
+  maxage 3
+  rotate 10
+  copytruncate
+  compress
+  missingok
+  notifempty
+  firstaction
+    find {{ HA_ROOT }}/logs/event/ -type f -mtime +3 -exec rm -f {} \;
+    find {{ HA_ROOT }}/logs/event/ -type d -empty -delete
+  endscript
+}
+
+/var/lib/logrotate.status {
+  weekly
+  rotate 1
+  nocreate
+  missingok
+  notifempty
+}

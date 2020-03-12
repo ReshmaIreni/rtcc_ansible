@@ -1,0 +1,5 @@
+---
+var_file_with_params_description: 'getter_params_rbm_components_version.yaml'
+get_params: []
+#getter_target_path: "{{ infinys_dir }}/logs"
+getter_format_output: 'to_json'

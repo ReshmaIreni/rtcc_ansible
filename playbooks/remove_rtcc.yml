@@ -1,0 +1,41 @@
+---
+- name: Removing RBM
+  import_playbook: remove_rbm.yml
+
+
+- name: Cleaning up RBM FE database on hosts {{ groups['RBM_FE_DB'] }}
+  hosts: CLUSTER_CONFIG_NODE
+  become: true
+  remote_user: "{{ rtcc_remote_user | default(RBM_FE_USER) }}"
+  become_user: "{{ rtcc_become_user | default(RBM_FE_USER) }}"
+  gather_facts: False
+  tasks:
+    - include_role:
+        name: service_rbm
+        tasks_from: cleanup_rbm_database.yaml
+      vars:
+        cleanup_rbm_database_host_list: "{{ groups['RBM_FE_DB'] }}"
+        cleanup_rbm_database_file_dest_dir: "{{ HA_ROOT }}/scripts"
+
+- name: "Removing {{ HA_ROOT }} on hosts {{ groups['RBM_FE_HA'] }}"
+  hosts: RBM_FE_HA
+  become: true
+  remote_user: "{{ rtcc_remote_user | default(RBM_FE_USER) }}"
+  become_user: "{{ rtcc_become_user | default(RBM_FE_USER) }}"
+  gather_facts: False
+  tasks:
+    - name: "Removing {{ HA_ROOT }}"
+      file:
+        path: "{{ HA_ROOT }}/"
+        state: absent
+
+- name: "Unmounting {{ infinys_dir }} on hosts {{ groups['RBM_FE_HA'] }}"
+  hosts: RBM_FE_HA
+  become: true
+  remote_user: "{{ cloud_user }}"
+  gather_facts: False
+  tasks:
+    - name: Unmounting {{ infinys_dir }}
+      command: "umount -f -l {{ infinys_dir }}"
+      ignore_errors: yes
+      when: remove_rtcc_unmount|default(false)

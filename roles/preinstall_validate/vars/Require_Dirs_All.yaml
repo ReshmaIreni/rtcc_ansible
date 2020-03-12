@@ -1,0 +1,8 @@
+---
+# List of variables defined required paths on all nodes
+preinstall_validate_paths:
+  - { path: "{{ java_dir }}", stop_if_not_exist: yes, note_for_error_message: "<java_dir>" }
+  - { path: "{{ activemq_home }}", stop_if_not_exist: no, note_for_error_message: "<activemq_home>" }
+  - { path: "{{ activemq_cms_home }}", stop_if_not_exist: no, note_for_error_message: "<activemq_cms_home>" }
+  - { path: "{{ rbm_license_dir }}", stop_if_not_exist: yes, note_for_error_message: "<rbm_license_dir>" }
+  - { path: "{{ oracle_home }}", stop_if_not_exist: yes, note_for_error_message: "<oracle_home>" }

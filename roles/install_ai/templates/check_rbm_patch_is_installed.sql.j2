@@ -1,0 +1,20 @@
+WHENEVER SQLERROR EXIT FAILURE
+SET feed off
+SET head off
+SET pagesize 0
+
+SELECT CASE
+    WHEN EXISTS (SELECT distinct 1
+                 FROM (
+                     SELECT install_date
+                     FROM components_versions_history
+                     WHERE REGEXP_LIKE('{{ install_ai_patch_path | basename }}', '.*(' || replace(component_id, '.', '\.') || ').*(' || replace(version, '.', '\.') || '[^0-9.]).*', 'i')
+                     UNION ALL
+                     SELECT install_date
+                     FROM integration_versions_history
+					 WHERE REGEXP_LIKE('{{ install_ai_patch_path | basename }}', '.*(' || replace(integration_name, '.', '\.') || ').*(' || replace(integration_version, '.', '\.') || '[^0-9.]).*', 'i')))
+    THEN 'true'
+    ELSE 'false'
+END
+FROM dual;
+EXIT

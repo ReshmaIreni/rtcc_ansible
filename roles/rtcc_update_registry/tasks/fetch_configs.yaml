@@ -1,0 +1,9 @@
+---
+- name: Begin fetching
+  include_role:
+    name: get_configs
+    tasks_from: fetch_from_fs
+  vars:
+    template_files:
+      - { template: 'rtcc_updateRegistry.sh.j2', 'remote_file':'{{ infinys_dir }}/install/rtcc_updateRegistry.sh' }
+    application_name: rtcc

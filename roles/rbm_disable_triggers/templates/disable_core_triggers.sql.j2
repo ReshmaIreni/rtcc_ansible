@@ -1,0 +1,13 @@
+begin
+    for triggers in (select object_name, owner
+                       from dba_objects
+                      where  object_name IN ({{ rbm_core_oracle_triggers | map("regex_replace","(.+)","\'\\1\'") | join(',') }})
+                        and object_type = 'TRIGGER')
+    loop
+      execute immediate 'alter trigger ' || triggers.owner || '.' || triggers.object_name || ' disable';
+    end loop;
+end;
+/
+
+commit;
+EXIT;

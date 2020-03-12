@@ -1,0 +1,5 @@
+---
+
+cleanup_disconnect_active_sessions_file_dest_dir: "{{ infinys_dir }}/scripts"
+
+cleanup_rbm_database_file_dest_dir: "{{ infinys_dir }}/scripts"

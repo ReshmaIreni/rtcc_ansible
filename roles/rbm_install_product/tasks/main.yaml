@@ -1,0 +1,51 @@
+---
+- name: Copy fix_indexes.sql file
+  template:
+    src: fix_indexes.sql.j2
+    dest: "{{ infinys_dir }}/scripts/fix_indexes.sql"
+    owner: "{{ RBM_BE_USER }}"
+    group: "{{ RBM_BE_GROUP }}"
+    mode: 0664
+  when:
+    - upgrade
+
+- name: Rebuild unusable indexes
+  shell: |
+    source ./infinys.env
+    sqlplus -s {{ pf_schema_name }}/$rbm_pf_schema_password@{{ be_oracle_service_name }} @scripts/fix_indexes.sql
+    sqlplus -s {{ pf_audit_name }}/$rbm_pf_audit_password@{{ be_oracle_service_name }} @scripts/fix_indexes.sql
+    sqlplus -s {{ pf_sec_schema_name }}/$rbm_pf_sec_schema_password@{{ be_oracle_service_name }} @scripts/fix_indexes.sql
+  args:
+    chdir: "{{ infinys_dir }}"
+  environment:
+    rbm_pf_schema_password: "{{ pf_schema_password }}"
+    rbm_pf_audit_password: "{{ pf_audit_password }}"
+    rbm_pf_sec_schema_password: "{{ pf_sec_schema_password }}"
+  when:
+    - upgrade
+  register: fix_indexes
+
+- debug:
+    msg: "{{ fix_indexes.stdout }}"
+  when:
+    - not ansible_check_mode
+    - fix_indexes.stdout is defined
+
+- name: Merge defaults with host variables
+  set_fact:
+    merge_oracle_tablespaces: "{{ oracle_tablespaces_default | combine(oracle_tablespaces, recursive=True) }}"
+
+- import_tasks: install_utilities.yaml
+  tags: install_utilities
+
+- include_role:
+    name: unzip_project_fixes
+
+- import_tasks: install_pf.yaml
+  tags: install_pf
+
+- import_tasks: install_rb.yaml
+  tags: install_rb
+
+- import_tasks: install_eca.yaml
+  tags: install_eca

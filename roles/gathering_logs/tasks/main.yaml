@@ -1,0 +1,21 @@
+---
+- name: Initialize archive filename
+  set_fact:
+    gathering_logs_arch_file: "archive_logs_{{ inventory_hostname }}_{{ ansible_date_time.iso8601_basic }}.tar.gz"
+
+- name: Create a gz archive with logs files on remote server
+  archive:
+    path: "{{ gathering_logs_to_archive }}"
+    dest: "{{ infinys_dir }}/tmp/{{ gathering_logs_arch_file }}"
+    format: gz
+
+- name: Fetch logs archive
+  fetch:
+    src: "{{ infinys_dir }}/tmp/{{ gathering_logs_arch_file }}"
+    dest: "{{ archive_log_dir }}/"
+    flat: yes
+
+- name: Remove temporary archive on remote hosts
+  file:
+    state: absent
+    path: "{{ infinys_dir }}/tmp/{{ gathering_logs_arch_file }}"

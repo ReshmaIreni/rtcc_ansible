@@ -1,0 +1,15 @@
+---
+- name: Check mountpoint directory
+  file:
+    path: "{{ infinys_dir }}"
+    state: directory
+    owner: "{{ RBM_BE_USER }}"
+    group: "{{ RBM_BE_GROUP }}"
+    mode: 0755
+
+- name: Mount application directory
+  mount:
+    src: "{{ rbm_be_hostname }}:{{ infinys_dir }}"
+    name: "{{ infinys_dir }}"
+    fstype: nfs
+    state: mounted

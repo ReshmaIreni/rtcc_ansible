@@ -1,0 +1,23 @@
+---
+- name: Set domain groups list
+  set_fact:
+    fe_dg_list: "{{ DOMAIN_GROUPS.keys() | map('extract', DOMAIN_GROUPS, 'domain_group_id') | list | sort }}"
+  when: type == 'local'
+
+- name: Begin fetching
+  include_role:
+    name: get_configs
+    tasks_from: fetch_from_fs
+  vars:
+    template_files:
+      - { template: 'prov.config.j2', 'remote_file':'{{ prov_staging_home }}/prov.config' }
+      - { template: 'amfRBMClusterinput.xml.j2', 'remote_file':'{{ rtcc_staging_dir }}/aisgen/amfRBMClusterinput.xml' }
+      - { template: 'amfRBMClusterinput.xsd.j2', 'remote_file':'{{ rtcc_staging_dir }}/aisgen/amfRBMClusterinput.xsd' }
+    application_name: rtcc
+
+- name: Begin fetching
+  vars:
+    var_file_with_params_description: query_params.yaml
+  include_role:
+    name: rbm_get_params_from_db
+  when: type != 'local'

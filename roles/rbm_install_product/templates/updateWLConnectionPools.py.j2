@@ -1,0 +1,31 @@
+print("*** Connecting.... *****")
+connect(url="t3://{{ web_server_host }}:{{ web_server_port }}", adminServerName="server")
+
+edit()
+startEdit()
+cd('JDBCSystemResources')
+pwd()
+ls()
+allDS=cmo.getJDBCSystemResources()
+for tmpDS in allDS:
+    dsName=tmpDS.getName();
+    print ('DataSource Name: ', dsName)
+    print ''
+    print ''
+    print ('Connection Pool settings for DataSource ', dsName)
+    cd('/JDBCSystemResources/'+dsName+'/JDBCResource/'+dsName+'/JDBCConnectionPoolParams/'+dsName)
+    pwd()
+    print ('InitialCapacity={{initialCapacity}}')
+    cmo.setInitialCapacity({{initialCapacity}})
+    cd('/JDBCSystemResources/'+dsName+'/JDBCResource/'+dsName+'/JDBCConnectionPoolParams/'+dsName)
+    print ('MinCapacity={{minCapacity}}')
+    cmo.setMinCapacity({{minCapacity}})
+    cd('/JDBCSystemResources/'+dsName+'/JDBCResource/'+dsName+'/JDBCConnectionPoolParams/'+dsName)
+    print ('MaxCapacity={{maxCapacity}}')
+    cmo.setMaxCapacity({{maxCapacity}})
+    print('*** Connection Pool settings has been Changed for DataSource: ', dsName)
+    print ('')
+    print ('')
+
+save()
+activate()

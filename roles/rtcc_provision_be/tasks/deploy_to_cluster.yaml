@@ -1,0 +1,30 @@
+---
+- name: set path to libraries
+  set_fact:
+    base_path: "{{ prov_staging_home }}/lX/{{ rbm_base_version }}/RB/lib"
+
+- debug:
+    msg: "base_path = {{ base_path }}"
+
+- name: Find so files of library
+  find:
+    paths: "{{ rtcc_deploy_custom_lib_dir }}"
+    patterns: ".*.so"
+    use_regex: true
+  register: so_files_pkg
+
+- name: Copy so files of library
+  copy:
+    src: "{{ item }}"
+    dest: "{{  base_path }}"
+    remote_src: yes
+  with_items: "{{ so_files_pkg.files | map(attribute='path') | list }}"
+
+- name: Execute CreateExtnConfig -w
+  register: execute_result
+  shell: |
+    {{ infinys_dir }}/RB/bin/CreateExtnConfig -w {{ base_path }}
+  args:
+    chdir: "{{ base_path }}"
+  tags:
+    - skip_ansible_lint

@@ -1,0 +1,18 @@
+SET SERVEROUTPUT ON;
+
+DECLARE
+	CURSOR sessions IS
+	    SELECT sid, serial#, username, osuser, program
+	        FROM v$session
+	        WHERE upper(username) != upper('{{sys_name}}') AND osuser != '{{oracle_user}}';
+BEGIN
+	FOR session IN sessions LOOP
+		DBMS_OUTPUT.PUT_LINE(' Session Id '||session.sid||', Serial Number '||session.serial#||', DB User '
+		||session.username||', OS User '||session.osuser||', Program '||session.program);
+		EXECUTE IMMEDIATE
+		    'ALTER SYSTEM DISCONNECT SESSION ''' || session.sid || ', ' || session.serial# || ''' IMMEDIATE';
+	END LOOP;
+END;
+/
+COMMIT;
+EXIT;

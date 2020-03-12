@@ -1,0 +1,42 @@
+---
+- name: Ensuring {{ preinstall_validate_ts_sql_script_dest_path }} direcrtory exists
+  file:
+    path: "{{ preinstall_validate_ts_sql_script_dest_path }}"
+    state: directory
+
+- name: Copying get_tablespaces.sql into {{ preinstall_validate_ts_sql_script_dest_path }}
+  copy:
+    src: get_tablespaces.sql
+    dest: "{{ preinstall_validate_ts_sql_script_dest_path }}/get_tablespaces.sql"
+    mode: 0664
+
+- name: Execute script get_tablespaces.sql for host {{ preinstall_validate_ts_host_list }}
+  shell: |
+    cd {{ preinstall_validate_ts_sql_script_dest_path }}
+    export ORACLE_HOME={{ oracle_home }}
+    export PATH=$PATH:$ORACLE_HOME/bin
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ORACLE_HOME/lib
+    sqlplus -s {{ sys_name }}/$rbm_sys_password@{{ preinstall_validate_ts_host }} {{ 'as sysdba' if use_sysdba else '' }} @get_tablespaces.sql
+  register: ts_output
+  changed_when: False
+  environment:
+    rbm_sys_password: "{{ sys_password }}"
+
+- name: Delete get_tablespaces.sql script
+  file:
+    path: "{{ preinstall_validate_ts_sql_script_dest_path }}/get_tablespaces.sql"
+    state: absent
+
+- name: Extract existing tablespaces list
+  set_fact:
+    oracle_existing_tablespaces: "{{ ts_output.stdout | from_json }}"
+
+- name: Fail if there is tablespace mismatch
+  fail:
+    msg: "{{ dict_item.key }} has less size ({{ oracle_existing_tablespaces[dict_item.key].free }}) than expected - {{ dict_item.value }}"
+  when:
+    - oracle_existing_tablespaces[dict_item.key] is defined
+    - oracle_existing_tablespaces[dict_item.key].free < dict_item.value
+  with_dict: "{{ preinstall_validate_etalon_tablespaces }}"
+  loop_control:
+    loop_var: dict_item

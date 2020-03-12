@@ -1,0 +1,5 @@
+---
+getter_format_output: 'to_json'
+get_params:
+# - { component: "SAMPLE_RBM",    sql_select: "select trim(name||': '||dbms_lob.substr(value, 4000, 1)) as param_from_db from systemregistryentry where name in ('PF_CONTAINER_USER', 'PF_ORA_TWO_TASK')" }
+  - { component: "RBM", sql_select: "select trim(chr(34)||component_id||chr(34)||': '||chr(34)||version||chr(34)) as param_from_db from inf_admin.components_versions" }

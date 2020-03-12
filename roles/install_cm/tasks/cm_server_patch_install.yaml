@@ -1,0 +1,27 @@
+---
+- name: Find CM Core patches
+  tags:
+    - install_cm_patches
+  find:
+    paths: "{{ kits_dir }}"
+    patterns: "{{ rbm_patterns.cm_server_patch }}"
+    use_regex: yes
+    recurse: yes
+  register: cm_patches_found
+
+- name: Set CM_SERVER patches
+  tags:
+    - install_cm_patches
+  set_fact:
+    cm_server_patch_pkg: "{{ cm_patches_found.files | map(attribute='path') | list | version_sort }}"
+
+- name: Install CM Server Patches
+  include_role:
+    name: install_ai
+  tags:
+    - install_cm_patches
+  vars:
+    install_ai_netcracker_home: "{{ infinys_dir }}"
+    install_ai_patch_path: "{{ item }}"
+  with_items: "{{ cm_server_patch_pkg }}"
+

@@ -1,0 +1,14 @@
+---
+rtcc_rolling_update: no
+rtcc_rolling_update_retries: 3
+rtcc_rolling_update_delay: 5
+# During rtcc rolling update we need doing rtcc provision BE & FE
+# including we need update linkage project list
+# list of linkage for update by {{ infinys_dir }}/RB/bin/RCLU binary source
+rtcc_linkage_update_list: []
+#   for example for telenet :
+#       rtcc_linkage_update_list:
+#         - "HACS01"
+#         - "HACS02"
+#   as result for telenet will be doing update by next command
+#       ${{ infinys_dir }}/RB/bin/RCLU N1 HACS01 N2 HACS02 -c {{ CLUSTER_NAME }}
